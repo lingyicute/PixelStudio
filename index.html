@@ -3345,12 +3345,14 @@
         tc.height = rotH;
         const ctx = tc.getContext("2d");
 
-        ctx.save();
-        ctx.translate(rotW / 2, rotH / 2);
-        ctx.rotate((state.rotation * Math.PI) / 180);
-        ctx.scale(state.flipH ? -1 : 1, state.flipV ? -1 : 1);
+        // Exact integer matrix: Math.cos(π/2) is not 0, and a 1e-16 skew can make the browser
+        // resample (blur) the edges of a quarter turn. Smoothing off keeps this step bit-exact.
+        const [cs, sn] = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] }[state.rotation] || [1, 0];
+        const fx = state.flipH ? -1 : 1;
+        const fy = state.flipV ? -1 : 1;
+        ctx.imageSmoothingEnabled = false;
+        ctx.setTransform(cs * fx, sn * fx, -sn * fy, cs * fy, rotW / 2, rotH / 2);
         ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
-        ctx.restore();
 
         state.transformedCanvas = tc;
         state.rotW = rotW;
