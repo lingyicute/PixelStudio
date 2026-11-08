@@ -1,0 +1,4440 @@
+<!-- 
+==========================================================================
+  Copyright 2026 lingyicute
+==========================================================================
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#006A67" />
+  <title>像素工坊 PixelStudio · Material You H5 图片处理工具</title>
+  <style>
+    /* ==========================================================================
+       1. MATERIAL YOU (MATERIAL DESIGN 3) DYNAMIC COLOR TOKENS & DESIGN SYSTEM
+       ========================================================================== */
+    :root {
+      /* Default Seed: 青瓷碧 (Teal Studio) - Light */
+      --md-sys-color-primary: #006a67;
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #9cf1ed;
+      --md-sys-color-on-primary-container: #00201f;
+
+      --md-sys-color-secondary: #4a6361;
+      --md-sys-color-on-secondary: #ffffff;
+      --md-sys-color-secondary-container: #cce8e5;
+      --md-sys-color-on-secondary-container: #051f1e;
+
+      --md-sys-color-tertiary: #49607b;
+      --md-sys-color-on-tertiary: #ffffff;
+      --md-sys-color-tertiary-container: #d1e4ff;
+      --md-sys-color-on-tertiary-container: #021d35;
+
+      --md-sys-color-surface: #f4fbf9;
+      --md-sys-color-surface-dim: #d5dbd9;
+      --md-sys-color-surface-bright: #f4fbf9;
+      --md-sys-color-surface-container-lowest: #ffffff;
+      --md-sys-color-surface-container-low: #eef5f3;
+      --md-sys-color-surface-container: #e9efed;
+      --md-sys-color-surface-container-high: #e3eae8;
+      --md-sys-color-surface-container-highest: #dde4e2;
+
+      --md-sys-color-on-surface: #161d1c;
+      --md-sys-color-on-surface-variant: #3f4948;
+      --md-sys-color-outline: #6f7978;
+      --md-sys-color-outline-variant: #bec9c7;
+
+      --md-sys-color-error: #ba1a1a;
+      --md-sys-color-on-error: #ffffff;
+      --md-sys-color-error-container: #ffdad6;
+      --md-sys-color-on-error-container: #410002;
+
+      --md-sys-color-success-container: #c8f7dc;
+      --md-sys-color-on-success-container: #002111;
+      --md-sys-color-warning-container: #ffdf9e;
+      --md-sys-color-on-warning-container: #261a00;
+
+      --md-sys-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px 1px rgba(0, 0, 0, 0.04);
+      --md-sys-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
+      --md-sys-elevation-3: 0 4px 12px 3px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
+
+      --checker-a: #e4ecea;
+      --checker-b: #f7fbfa;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+      --radius-xs: 8px;
+      --radius-sm: 12px;
+      --radius-md: 16px;
+      --radius-lg: 22px;
+      --radius-xl: 28px;
+      --radius-full: 9999px;
+
+      --motion-spring: cubic-bezier(0.2, 0, 0, 1);
+      --motion-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+    }
+
+    /* Dark Mode Base Tokens */
+    [data-theme="dark"] {
+      --md-sys-color-primary: #4cdad5;
+      --md-sys-color-on-primary: #003735;
+      --md-sys-color-primary-container: #00504e;
+      --md-sys-color-on-primary-container: #9cf1ed;
+
+      --md-sys-color-secondary: #b0ccc9;
+      --md-sys-color-on-secondary: #1b3533;
+      --md-sys-color-secondary-container: #324b49;
+      --md-sys-color-on-secondary-container: #cce8e5;
+
+      --md-sys-color-tertiary: #b1c8e8;
+      --md-sys-color-on-tertiary: #19324b;
+      --md-sys-color-tertiary-container: #314862;
+      --md-sys-color-on-tertiary-container: #d1e4ff;
+
+      --md-sys-color-surface: #0e1514;
+      --md-sys-color-surface-dim: #0e1514;
+      --md-sys-color-surface-bright: #343b3a;
+      --md-sys-color-surface-container-lowest: #090f0f;
+      --md-sys-color-surface-container-low: #161d1c;
+      --md-sys-color-surface-container: #1a2120;
+      --md-sys-color-surface-container-high: #252b2a;
+      --md-sys-color-surface-container-highest: #2f3635;
+
+      --md-sys-color-on-surface: #dde4e2;
+      --md-sys-color-on-surface-variant: #bec9c7;
+      --md-sys-color-outline: #889391;
+      --md-sys-color-outline-variant: #3f4948;
+
+      --md-sys-color-error: #ffb4ab;
+      --md-sys-color-on-error: #690005;
+      --md-sys-color-error-container: #93000a;
+      --md-sys-color-on-error-container: #ffdad6;
+
+      --md-sys-color-success-container: #005232;
+      --md-sys-color-on-success-container: #c8f7dc;
+      --md-sys-color-warning-container: #5c4300;
+      --md-sys-color-on-warning-container: #ffdf9e;
+
+      --md-sys-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.45);
+      --md-sys-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.5);
+      --md-sys-elevation-3: 0 6px 16px 4px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.55);
+
+      --checker-a: #18201f;
+      --checker-b: #212a29;
+    }
+
+    /* Dynamic Seed 2: 暮山紫 (Violet) */
+    [data-seed="violet"] {
+      --md-sys-color-primary: #6750a4;
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #eaddff;
+      --md-sys-color-on-primary-container: #21005d;
+      --md-sys-color-secondary: #625b71;
+      --md-sys-color-on-secondary: #ffffff;
+      --md-sys-color-secondary-container: #e8def8;
+      --md-sys-color-on-secondary-container: #1d192b;
+      --md-sys-color-surface: #fef7ff;
+      --md-sys-color-surface-container-low: #f7f2fa;
+      --md-sys-color-surface-container: #f3edf7;
+      --md-sys-color-surface-container-high: #ece6f0;
+      --md-sys-color-surface-container-highest: #e6e0e9;
+    }
+    [data-theme="dark"][data-seed="violet"] {
+      --md-sys-color-primary: #d0bcff;
+      --md-sys-color-on-primary: #381e72;
+      --md-sys-color-primary-container: #4f378b;
+      --md-sys-color-on-primary-container: #eaddff;
+      --md-sys-color-secondary: #ccc2dc;
+      --md-sys-color-on-secondary: #332d41;
+      --md-sys-color-secondary-container: #4a4458;
+      --md-sys-color-on-secondary-container: #e8def8;
+      --md-sys-color-surface: #141218;
+      --md-sys-color-surface-container-low: #1d1b20;
+      --md-sys-color-surface-container: #211f26;
+      --md-sys-color-surface-container-high: #2b2930;
+      --md-sys-color-surface-container-highest: #36343b;
+    }
+
+    /* Dynamic Seed 3: 晴空蓝 (Azure) */
+    [data-seed="azure"] {
+      --md-sys-color-primary: #1b60a5;
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #d4e3ff;
+      --md-sys-color-on-primary-container: #001c3a;
+      --md-sys-color-secondary: #545f71;
+      --md-sys-color-on-secondary: #ffffff;
+      --md-sys-color-secondary-container: #d8e3f8;
+      --md-sys-color-on-secondary-container: #111c2b;
+      --md-sys-color-surface: #f8f9ff;
+      --md-sys-color-surface-container-low: #f2f3fa;
+      --md-sys-color-surface-container: #eceef4;
+      --md-sys-color-surface-container-high: #e6e8ee;
+      --md-sys-color-surface-container-highest: #e0e2e8;
+    }
+    [data-theme="dark"][data-seed="azure"] {
+      --md-sys-color-primary: #a5c8ff;
+      --md-sys-color-on-primary: #00315f;
+      --md-sys-color-primary-container: #004786;
+      --md-sys-color-on-primary-container: #d4e3ff;
+      --md-sys-color-secondary: #bcc7dc;
+      --md-sys-color-on-secondary: #263141;
+      --md-sys-color-secondary-container: #3d4758;
+      --md-sys-color-on-secondary-container: #d8e3f8;
+      --md-sys-color-surface: #111318;
+      --md-sys-color-surface-container-low: #191c20;
+      --md-sys-color-surface-container: #1d2024;
+      --md-sys-color-surface-container-high: #282a2f;
+      --md-sys-color-surface-container-highest: #32353a;
+    }
+
+    /* Dynamic Seed 4: 森屿绿 (Forest) */
+    [data-seed="forest"] {
+      --md-sys-color-primary: #296a47;
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #aef2c5;
+      --md-sys-color-on-primary-container: #002110;
+      --md-sys-color-secondary: #4e6354;
+      --md-sys-color-on-secondary: #ffffff;
+      --md-sys-color-secondary-container: #d0e8d6;
+      --md-sys-color-on-secondary-container: #0b1f14;
+      --md-sys-color-surface: #f6fbf4;
+      --md-sys-color-surface-container-low: #f0f5ee;
+      --md-sys-color-surface-container: #eaefe8;
+      --md-sys-color-surface-container-high: #e4eae3;
+      --md-sys-color-surface-container-highest: #dfe4dd;
+    }
+    [data-theme="dark"][data-seed="forest"] {
+      --md-sys-color-primary: #93d5aa;
+      --md-sys-color-on-primary: #00391f;
+      --md-sys-color-primary-container: #095231;
+      --md-sys-color-on-primary-container: #aef2c5;
+      --md-sys-color-secondary: #b5ccba;
+      --md-sys-color-on-secondary: #203528;
+      --md-sys-color-secondary-container: #374b3d;
+      --md-sys-color-on-secondary-container: #d0e8d6;
+      --md-sys-color-surface: #0f1511;
+      --md-sys-color-surface-container-low: #171d19;
+      --md-sys-color-surface-container: #1b211d;
+      --md-sys-color-surface-container-high: #262b27;
+      --md-sys-color-surface-container-highest: #303632;
+    }
+
+    /* Dynamic Seed 5: 陶土橙 (Terracotta) */
+    [data-seed="terracotta"] {
+      --md-sys-color-primary: #984716;
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #ffdbca;
+      --md-sys-color-on-primary-container: #341100;
+      --md-sys-color-secondary: #765848;
+      --md-sys-color-on-secondary: #ffffff;
+      --md-sys-color-secondary-container: #ffdbca;
+      --md-sys-color-on-secondary-container: #2b160a;
+      --md-sys-color-surface: #fff8f6;
+      --md-sys-color-surface-container-low: #fdf1ec;
+      --md-sys-color-surface-container: #f7ebe6;
+      --md-sys-color-surface-container-high: #f1e5e0;
+      --md-sys-color-surface-container-highest: #ebe0db;
+    }
+    [data-theme="dark"][data-seed="terracotta"] {
+      --md-sys-color-primary: #ffb68e;
+      --md-sys-color-on-primary: #552000;
+      --md-sys-color-primary-container: #793100;
+      --md-sys-color-on-primary-container: #ffdbca;
+      --md-sys-color-secondary: #e6beaa;
+      --md-sys-color-on-secondary: #432b1d;
+      --md-sys-color-secondary-container: #5c4032;
+      --md-sys-color-on-secondary-container: #ffdbca;
+      --md-sys-color-surface: #19120e;
+      --md-sys-color-surface-container-low: #221a16;
+      --md-sys-color-surface-container: #261e1a;
+      --md-sys-color-surface-container-high: #312824;
+      --md-sys-color-surface-container-highest: #3d332e;
+    }
+
+    /* ==========================================================================
+       2. RESET & BASE TYPOGRAPHY
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: var(--font-sans);
+      background-color: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      font-size: 14px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.25s var(--motion-spring), color 0.25s var(--motion-spring);
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--md-sys-color-outline-variant);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--md-sys-color-outline);
+    }
+
+    /* ==========================================================================
+       3. APP SHELL & RESPONSIVE VIEWPORT ARCHITECTURE
+       ========================================================================== */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    /* Top App Bar (M3 Compact) */
+    .top-app-bar {
+      position: relative;
+      height: 60px;
+      min-height: 60px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background-color: var(--md-sys-color-surface);
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+      z-index: 30;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: var(--md-sys-elevation-1);
+    }
+
+    .brand-titles {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+
+    .brand-byline {
+      margin-top: 1px;
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 10px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .file-summary-pill {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: var(--md-sys-color-surface-container-high);
+      padding: 5px 12px 5px 14px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      color: var(--md-sys-color-on-surface-variant);
+      max-width: 420px;
+      overflow: hidden;
+    }
+    .file-summary-pill.visible {
+      display: flex;
+    }
+    .file-summary-name {
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 170px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Seed Color Dots (Desktop inline pill / Mobile popup panel) */
+    .seed-picker {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--md-sys-color-surface-container);
+      padding: 4px 8px;
+      border-radius: var(--radius-full);
+    }
+
+    /* Mobile-only palette trigger button (hidden on desktop) */
+    #btnSeedMobile {
+      display: none;
+    }
+    .seed-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.18s var(--motion-spring), border-color 0.18s;
+      padding: 0;
+    }
+    .seed-dot:hover {
+      transform: scale(1.15);
+    }
+    .seed-dot.active {
+      border-color: var(--md-sys-color-on-surface);
+      transform: scale(1.15);
+    }
+
+    /* Main Workspace Body */
+    .workspace-body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* M3 Navigation Rail (Desktop >= 1024px) */
+    .nav-rail {
+      width: 84px;
+      min-width: 84px;
+      background: var(--md-sys-color-surface-container-low);
+      border-right: 1px solid var(--md-sys-color-outline-variant);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0;
+      gap: 14px;
+      z-index: 20;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      width: 76px;
+      color: var(--md-sys-color-on-surface-variant);
+      transition: color 0.2s;
+    }
+
+    .nav-pill {
+      width: 56px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      display: grid;
+      place-items: center;
+      transition: background-color 0.22s var(--motion-spring), transform 0.18s;
+    }
+
+    .nav-item:hover .nav-pill {
+      background: rgba(128, 128, 128, 0.12);
+    }
+
+    .nav-item.active {
+      color: var(--md-sys-color-on-surface);
+      font-weight: 600;
+    }
+
+    .nav-item.active .nav-pill {
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+
+    .nav-label {
+      font-size: 11px;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    /* Center Interactive Stage */
+    .stage-area {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--checker-b);
+      background-image:
+        linear-gradient(45deg, var(--checker-a) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--checker-a) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .canvas-viewport {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: 20px;
+      user-select: none;
+      touch-action: none;
+    }
+
+    /* Empty State Dropzone Card */
+    .dropzone-card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--md-sys-color-surface-container-lowest);
+      border: 2px dashed var(--md-sys-color-outline-variant);
+      border-radius: var(--radius-xl);
+      padding: 36px 28px;
+      text-align: center;
+      box-shadow: var(--md-sys-elevation-2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      transition: border-color 0.2s, transform 0.2s var(--motion-spring), background-color 0.2s;
+      z-index: 10;
+    }
+    .dropzone-card.drag-over {
+      border-color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-primary-container);
+      transform: scale(1.015);
+    }
+
+    .dropzone-icon-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 24px;
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+      display: grid;
+      place-items: center;
+    }
+
+    .dropzone-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--md-sys-color-on-surface);
+    }
+
+    .dropzone-desc {
+      font-size: 13px;
+      color: var(--md-sys-color-on-surface-variant);
+      margin: 0;
+      max-width: 380px;
+    }
+
+    .dropzone-features {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .feature-tag {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      background: var(--md-sys-color-surface-container-high);
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    /* Interactive Canvas Wrapper & Crop Overlay */
+    .canvas-stage-inner {
+      position: relative;
+      display: none;
+      box-shadow: var(--md-sys-elevation-3);
+      border-radius: 4px;
+      overflow: visible;
+    }
+    .canvas-stage-inner.visible {
+      display: block;
+    }
+
+    #previewCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 4px;
+    }
+
+    /* Split Before/After Comparison Overlay */
+    .compare-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: none;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+    .compare-overlay.visible {
+      display: block;
+      pointer-events: auto;
+    }
+    #compareAfterCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .compare-divider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ffffff;
+      box-shadow: 0 0 8px rgba(0,0,0,0.6);
+      cursor: ew-resize;
+      z-index: 15;
+    }
+    .compare-handle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      border: 2px solid #ffffff;
+      display: grid;
+      place-items: center;
+      box-shadow: var(--md-sys-elevation-2);
+    }
+    .compare-label {
+      position: absolute;
+      top: 10px;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+    .compare-label.left { left: 10px; }
+    .compare-label.right { right: 10px; }
+
+    /* Cropper Overlay */
+    .crop-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      z-index: 12;
+    }
+    .crop-overlay.visible {
+      display: block;
+    }
+
+    .crop-box {
+      position: absolute;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.54), inset 0 0 0 1px rgba(0,0,0,0.35);
+      cursor: move;
+      touch-action: none;
+    }
+
+    /* Rule of thirds grid */
+    .crop-grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.32) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.32) 1px, transparent 1px);
+      background-size: 33.333% 33.333%;
+    }
+
+    .crop-hud-badge {
+      position: absolute;
+      top: -28px;
+      left: 0;
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: var(--md-sys-elevation-1);
+    }
+
+    /* 8 Crop Handles with generous mobile hit targets */
+    .crop-handle {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      z-index: 5;
+      touch-action: none;
+    }
+    .crop-handle::after {
+      content: "";
+      display: block;
+      background: #ffffff;
+      border: 2px solid var(--md-sys-color-primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+      border-radius: 999px;
+      transition: transform 0.12s;
+    }
+    .crop-handle:hover::after, .crop-handle:active::after {
+      transform: scale(1.25);
+      background: var(--md-sys-color-primary-container);
+    }
+
+    /* Corners */
+    .crop-handle[data-dir="nw"] { top: -14px; left: -14px; cursor: nwse-resize; }
+    .crop-handle[data-dir="ne"] { top: -14px; right: -14px; cursor: nesw-resize; }
+    .crop-handle[data-dir="se"] { bottom: -14px; right: -14px; cursor: nwse-resize; }
+    .crop-handle[data-dir="sw"] { bottom: -14px; left: -14px; cursor: nesw-resize; }
+    .crop-handle[data-dir="nw"]::after,
+    .crop-handle[data-dir="ne"]::after,
+    .crop-handle[data-dir="se"]::after,
+    .crop-handle[data-dir="sw"]::after {
+      width: 13px;
+      height: 13px;
+    }
+
+    /* Edges */
+    .crop-handle[data-dir="n"] { top: -14px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+    .crop-handle[data-dir="s"] { bottom: -14px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+    .crop-handle[data-dir="w"] { left: -14px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+    .crop-handle[data-dir="e"] { right: -14px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+    .crop-handle[data-dir="n"]::after,
+    .crop-handle[data-dir="s"]::after {
+      width: 22px;
+      height: 6px;
+    }
+    .crop-handle[data-dir="w"]::after,
+    .crop-handle[data-dir="e"]::after {
+      width: 6px;
+      height: 22px;
+    }
+
+    /* Floating Stage Bottom Toolbar */
+    .stage-toolbar {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 8px;
+      border-radius: var(--radius-full);
+      background: var(--md-sys-color-surface-container-high);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      box-shadow: var(--md-sys-elevation-2);
+      z-index: 18;
+      max-width: calc(100% - 24px);
+      overflow-x: auto;
+    }
+    .stage-toolbar.visible {
+      display: flex;
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 18px;
+      background: var(--md-sys-color-outline-variant);
+      margin: 0 3px;
+      flex-shrink: 0;
+    }
+
+    /* ==========================================================================
+       4. INSPECTOR & EXPORT DOCK (RIGHT PANEL ON DESKTOP / BOTTOM SHEET ON MOBILE)
+       ========================================================================== */
+    .inspector-dock {
+      width: 400px;
+      min-width: 360px;
+      max-width: 420px;
+      background: var(--md-sys-color-surface-container-low);
+      border-left: 1px solid var(--md-sys-color-outline-variant);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+      z-index: 20;
+    }
+
+    .inspector-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Material You Cards */
+    .m3-card {
+      background: var(--md-sys-color-surface-container-lowest);
+      border-radius: var(--radius-xl);
+      padding: 18px;
+      box-shadow: var(--md-sys-elevation-1);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .m3-card.tonal {
+      background: var(--md-sys-color-surface-container);
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--md-sys-color-on-surface);
+    }
+
+    .card-subtitle {
+      font-size: 11px;
+      color: var(--md-sys-color-on-surface-variant);
+      margin: 0;
+    }
+
+    /* Tool Panels Visibility */
+    .tool-panel {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      animation: panelFadeIn 0.22s var(--motion-spring);
+    }
+    .tool-panel.active {
+      display: flex;
+    }
+
+    @keyframes panelFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==========================================================================
+       5. MATERIAL YOU COMPONENTS (BUTTONS, CHIPS, SEGMENTED, INPUTS, SLIDERS)
+       ========================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 40px;
+      padding: 0 18px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: background-color 0.18s, box-shadow 0.18s, transform 0.12s;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .btn:active {
+      transform: scale(0.97);
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-filled {
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      box-shadow: var(--md-sys-elevation-1);
+    }
+    .btn-filled:hover:not(:disabled) {
+      box-shadow: var(--md-sys-elevation-2);
+      filter: brightness(1.06);
+    }
+
+    .btn-tonal {
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    .btn-tonal:hover:not(:disabled) {
+      filter: brightness(0.96);
+    }
+
+    .btn-outlined {
+      background: transparent;
+      color: var(--md-sys-color-primary);
+      border: 1px solid var(--md-sys-color-outline);
+    }
+    .btn-outlined:hover:not(:disabled) {
+      background: rgba(128, 128, 128, 0.08);
+    }
+
+    .btn-text {
+      background: transparent;
+      color: var(--md-sys-color-primary);
+      padding: 0 12px;
+      height: 34px;
+    }
+    .btn-text:hover:not(:disabled) {
+      background: rgba(128, 128, 128, 0.09);
+    }
+
+    .btn-sm {
+      height: 32px;
+      padding: 0 12px;
+      font-size: 12px;
+    }
+
+    .btn-lg {
+      height: 48px;
+      padding: 0 24px;
+      font-size: 14px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--md-sys-color-on-surface-variant);
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      transition: background-color 0.16s, color 0.16s;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover:not(:disabled) {
+      background: rgba(128, 128, 128, 0.12);
+      color: var(--md-sys-color-on-surface);
+    }
+    .icon-btn.active {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    .icon-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* M3 Filter Chips */
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .m3-chip {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      background: var(--md-sys-color-surface-container-lowest);
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.16s var(--motion-spring);
+    }
+    .m3-chip:hover {
+      background: var(--md-sys-color-surface-container-high);
+    }
+    .m3-chip.active {
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+      border-color: transparent;
+      font-weight: 600;
+    }
+
+    /* M3 Segmented Buttons */
+    .segmented-group {
+      display: flex;
+      width: 100%;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--md-sys-color-outline);
+      overflow: hidden;
+      background: var(--md-sys-color-surface-container-lowest);
+    }
+
+    .segmented-btn {
+      flex: 1;
+      height: 38px;
+      border: none;
+      border-right: 1px solid var(--md-sys-color-outline);
+      background: transparent;
+      color: var(--md-sys-color-on-surface);
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: background-color 0.18s, color 0.18s;
+      padding: 0 8px;
+    }
+    .segmented-btn:last-child {
+      border-right: none;
+    }
+    .segmented-btn:hover:not(.active) {
+      background: rgba(128, 128, 128, 0.08);
+    }
+    .segmented-btn.active {
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    .segmented-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* M3 Filled Input Fields */
+    .field-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .m3-field {
+      display: flex;
+      flex-direction: column;
+      background: var(--md-sys-color-surface-container-high);
+      border-radius: 14px 14px 4px 4px;
+      border-bottom: 1.5px solid var(--md-sys-color-outline);
+      padding: 6px 12px 6px;
+      transition: border-color 0.18s, background-color 0.18s;
+    }
+    .m3-field:focus-within {
+      border-bottom-width: 2px;
+      border-bottom-color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-surface-container-highest);
+    }
+
+    .m3-field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface-variant);
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .m3-field input, .m3-field select {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+      outline: none;
+      padding: 2px 0;
+    }
+    .m3-field input[type="number"] {
+      font-family: var(--font-mono);
+    }
+
+    /* Resize Aspect Lock Row */
+    .resize-lock-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* M3 Switch */
+    .m3-switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+    }
+    .m3-switch-label {
+      display: flex;
+      flex-direction: column;
+    }
+    .m3-switch-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+    }
+    .m3-switch-desc {
+      font-size: 11px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .m3-switch {
+      position: relative;
+      width: 50px;
+      height: 30px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .m3-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .m3-switch-track {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-full);
+      background: var(--md-sys-color-surface-container-highest);
+      border: 2px solid var(--md-sys-color-outline);
+      transition: all 0.2s var(--motion-spring);
+    }
+    .m3-switch-thumb {
+      position: absolute;
+      top: 50%;
+      left: 6px;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--md-sys-color-outline);
+      transition: all 0.2s var(--motion-spring);
+    }
+    .m3-switch input:checked + .m3-switch-track {
+      background: var(--md-sys-color-primary);
+      border-color: var(--md-sys-color-primary);
+    }
+    .m3-switch input:checked ~ .m3-switch-thumb {
+      left: 24px;
+      width: 20px;
+      height: 20px;
+      background: var(--md-sys-color-on-primary);
+    }
+
+    /* M3 Expressive Slider */
+    .slider-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .slider-value-pill {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+    }
+
+    input[type="range"].m3-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 12px;
+      border-radius: var(--radius-full);
+      background: var(--md-sys-color-surface-container-highest);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"].m3-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--md-sys-color-primary);
+      border: 3px solid var(--md-sys-color-surface-container-lowest);
+      box-shadow: var(--md-sys-elevation-2);
+      cursor: pointer;
+      transition: transform 0.14s;
+    }
+    input[type="range"].m3-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].m3-slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--md-sys-color-primary);
+      border: 3px solid var(--md-sys-color-surface-container-lowest);
+      box-shadow: var(--md-sys-elevation-2);
+      cursor: pointer;
+    }
+
+    /* Info Banner */
+    .m3-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      background: var(--md-sys-color-tertiary-container);
+      color: var(--md-sys-color-on-tertiary-container);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .m3-banner.warning {
+      background: var(--md-sys-color-warning-container);
+      color: var(--md-sys-color-on-warning-container);
+    }
+
+    /* Export Summary Footer inside Inspector */
+    .export-sticky-footer {
+      padding: 14px 16px;
+      background: var(--md-sys-color-surface-container);
+      border-top: 1px solid var(--md-sys-color-outline-variant);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .size-compare-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .size-metric {
+      display: flex;
+      flex-direction: column;
+    }
+    .size-metric-label {
+      font-size: 11px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+    .size-metric-val {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--md-sys-color-on-surface);
+    }
+
+    .delta-pill {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      background: var(--md-sys-color-success-container);
+      color: var(--md-sys-color-on-success-container);
+    }
+    .delta-pill.increase {
+      background: var(--md-sys-color-warning-container);
+      color: var(--md-sys-color-on-warning-container);
+    }
+
+    /* EXIF Badge & Sections */
+    .exif-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--md-sys-color-primary);
+      margin-top: 4px;
+    }
+
+    /* JPEG Matte Color Row */
+    .matte-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      background: var(--md-sys-color-surface-container-high);
+      font-size: 12px;
+    }
+    .matte-swatches {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .matte-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--md-sys-color-outline-variant);
+      cursor: pointer;
+    }
+    .matte-swatch.active {
+      border-color: var(--md-sys-color-primary);
+      transform: scale(1.12);
+    }
+
+    /* Toast Snackbar (M3) */
+    .m3-snackbar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--md-sys-color-on-surface);
+      color: var(--md-sys-color-surface);
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--md-sys-elevation-3);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.28s var(--motion-emphasized), opacity 0.22s;
+      max-width: calc(100vw - 32px);
+      text-align: center;
+    }
+    .m3-snackbar.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ==========================================================================
+       6. RESPONSIVE BREAKPOINTS (TABLET & MOBILE VIEWPORTS)
+       ========================================================================== */
+    /* Tablet: 768px - 1023px */
+    @media (max-width: 1023px) {
+      .nav-rail {
+        width: 72px;
+        min-width: 72px;
+      }
+      .inspector-dock {
+        width: 340px;
+        min-width: 320px;
+      }
+      .file-summary-name {
+        max-width: 110px;
+      }
+    }
+
+    /* Mobile: < 768px */
+    @media (max-width: 767px) {
+      .top-app-bar {
+        height: 54px;
+        min-height: 54px;
+        padding: 0 12px;
+      }
+      .brand-logo {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+      }
+      .brand-title {
+        font-size: 15px;
+      }
+      .file-summary-pill {
+        display: none !important;
+      }
+      /* On narrow viewports, replace inline dots with a popup palette panel */
+      #btnSeedMobile {
+        display: inline-grid;
+      }
+
+      .seed-picker {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 12px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-radius: var(--radius-lg);
+        background: var(--md-sys-color-surface-container-highest);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        box-shadow: var(--md-sys-elevation-3);
+        z-index: 60;
+        max-width: calc(100vw - 24px);
+      }
+      .seed-picker.open {
+        display: flex;
+        animation: seedPopIn 0.18s var(--motion-spring);
+      }
+
+      .seed-picker .seed-dot {
+        width: 26px;
+        height: 26px;
+      }
+
+      @keyframes seedPopIn {
+        from { opacity: 0; transform: translateY(-8px) scale(0.92); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      /* Switch layout to vertical stack with bottom M3 Navigation Bar */
+      .workspace-body {
+        flex-direction: column;
+        padding-bottom: calc(68px + env(safe-area-inset-bottom));
+      }
+
+      /* Stage occupies top 42% of viewport on mobile */
+      .stage-area {
+        flex: none;
+        height: 42dvh;
+        min-height: 220px;
+        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+      }
+      .canvas-viewport {
+        padding: 12px;
+      }
+      .dropzone-card {
+        padding: 20px 16px;
+        gap: 10px;
+      }
+      .dropzone-icon-wrap {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+      }
+      .dropzone-title {
+        font-size: 16px;
+      }
+      .dropzone-desc {
+        font-size: 12px;
+      }
+      .dropzone-features {
+        display: none;
+      }
+
+      .stage-toolbar {
+        bottom: 8px;
+        padding: 3px 6px;
+      }
+
+      /* Inspector fills remaining vertical height cleanly */
+      .inspector-dock {
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        flex: 1;
+        border-left: none;
+      }
+      .inspector-scroll {
+        padding: 12px;
+        gap: 12px;
+      }
+      .m3-card {
+        padding: 14px;
+        border-radius: var(--radius-lg);
+      }
+
+      /* On mobile, hide the export card inside scroll unless 'export' tab is active,
+         while keeping the sticky export footer accessible! */
+      .desktop-only-export-card {
+        display: none;
+      }
+      .desktop-only-export-card.mobile-active {
+        display: flex;
+      }
+
+      .export-sticky-footer {
+        padding: 10px 12px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .export-sticky-footer .btn-lg {
+        height: 42px;
+        padding: 0 18px;
+      }
+
+      /* Bottom M3 Navigation Bar */
+      .nav-rail {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: calc(68px + env(safe-area-inset-bottom));
+        padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+        flex-direction: row;
+        justify-content: space-around;
+        border-right: none;
+        border-top: 1px solid var(--md-sys-color-outline-variant);
+        background: var(--md-sys-color-surface-container);
+        z-index: 40;
+      }
+      .nav-item {
+        width: auto;
+        flex: 1;
+        padding: 2px 0;
+      }
+      .nav-pill {
+        width: 58px;
+        height: 28px;
+      }
+
+      .m3-snackbar {
+        bottom: calc(80px + env(safe-area-inset-bottom));
+      }
+
+      /* iOS Safari auto-zooms into inputs < 16px; keep them at 16px on touch viewports */
+      .m3-field input,
+      .m3-field select,
+      #inpCompressionExact {
+        font-size: 16px;
+      }
+
+      /* Export footer: horizontal layout, keep metrics shrinkable and button intrinsic */
+      .export-sticky-footer .size-compare-row {
+        flex: 1;
+        min-width: 0;
+      }
+      .export-sticky-footer .btn-lg {
+        width: auto !important;
+        flex-shrink: 0;
+      }
+
+      /* Guarantee the export card stays hidden on mobile unless explicitly activated */
+      .desktop-only-export-card:not(.mobile-active) {
+        display: none !important;
+      }
+
+      /* Notch / safe-area insets for landscape phones */
+      .top-app-bar {
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+      }
+      .nav-rail {
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
+      }
+    }
+
+    /* Short landscape phones / small tablets: compact chrome so the canvas keeps breathing room */
+    @media (min-width: 768px) and (max-height: 520px) {
+      .top-app-bar {
+        height: 48px;
+        min-height: 48px;
+      }
+      .inspector-dock {
+        width: 320px;
+        min-width: 300px;
+      }
+      .nav-rail {
+        width: 64px;
+        min-width: 64px;
+        gap: 6px;
+        padding-top: 8px;
+      }
+      .nav-label {
+        display: none;
+      }
+      .m3-card {
+        padding: 12px;
+      }
+    }
+
+    /* Desktop: export button spans the dock width */
+    .export-sticky-footer .btn-lg {
+      width: 100%;
+    }
+
+    /* Crop HUD badge flips inside the box when it would be clipped at the top edge */
+    .crop-box.hud-inside .crop-hud-badge {
+      top: 6px;
+      left: 6px;
+    }
+
+    /* Pending state while an encode is in flight */
+    .size-metric-val.pending {
+      opacity: 0.45;
+      transition: opacity 0.15s;
+    }
+
+    /* Respect reduced motion preferences */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ======================================================================
+         TOP APP BAR
+         ====================================================================== -->
+    <header class="top-app-bar">
+      <div class="brand-group">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="M21 15l-5-5L5 21"/>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <div class="brand-title">像素工坊</div>
+          <span class="brand-byline">by lingyicute</span>
+        </div>
+      </div>
+
+      <div id="fileSummaryPill" class="file-summary-pill">
+        <span id="fileNameLabel" class="file-summary-name">sample.jpg</span>
+        <span>·</span>
+        <span id="fileMetaLabel">1600×1066 · 1.2 MB</span>
+        <button id="btnReplaceFileTop" class="btn btn-text btn-sm" style="height:24px;padding:0 8px;">更换</button>
+      </div>
+
+      <div class="top-actions">
+        <!-- Dynamic Material You Seed Color Switcher -->
+        <div class="seed-picker" id="seedPicker" title="Material You 动态取色主题">
+          <button class="seed-dot active" data-seed="teal" style="background:#006A67" aria-label="青瓷碧"></button>
+          <button class="seed-dot" data-seed="violet" style="background:#6750A4" aria-label="暮山紫"></button>
+          <button class="seed-dot" data-seed="azure" style="background:#1B60A5" aria-label="晴空蓝"></button>
+          <button class="seed-dot" data-seed="forest" style="background:#296A47" aria-label="森屿绿"></button>
+          <button class="seed-dot" data-seed="terracotta" style="background:#984716" aria-label="陶土橙"></button>
+        </div>
+
+        <!-- Mobile-only palette trigger: tap to pop up the seed color panel -->
+        <button id="btnSeedMobile" class="icon-btn" title="切换 Material You 动态主题色" aria-label="切换动态主题色">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22a10 10 0 1 1 0-20c5.5 0 10 4.5 10 10 0 2.5-2 3-3.5 3H17a2 2 0 0 0-1.5 3.3c.6.7.5 3.7-3.5 3.7z"/>
+            <circle cx="7.5" cy="10.5" r="1" fill="currentColor"/>
+            <circle cx="12" cy="7.5" r="1" fill="currentColor"/>
+            <circle cx="16.5" cy="10.5" r="1" fill="currentColor"/>
+          </svg>
+        </button>
+
+        <button id="btnToggleCompareTop" class="btn btn-tonal btn-sm" disabled title="对比原图与压缩后画质">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v18"/><path d="M5 12H2"/><path d="M22 12h-3"/><rect x="4" y="5" width="16" height="14" rx="2"/>
+          </svg>
+          <span>对比</span>
+        </button>
+
+        <button id="btnThemeToggle" class="icon-btn" title="切换深色 / 浅色模式" aria-label="切换深色或浅色模式">
+          <svg id="iconMoon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
+          <svg id="iconSun" style="display:none" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ======================================================================
+         MAIN WORKSPACE BODY
+         ====================================================================== -->
+    <div class="workspace-body">
+      <!-- M3 Navigation Rail (Desktop) / Navigation Bar (Mobile) -->
+      <nav class="nav-rail" aria-label="功能导航">
+        <button class="nav-item active" data-tab="crop">
+          <div class="nav-pill">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>
+            </svg>
+          </div>
+          <span class="nav-label">无损裁剪</span>
+        </button>
+
+        <button class="nav-item" data-tab="resize">
+          <div class="nav-pill">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+          </div>
+          <span class="nav-label">修改尺寸</span>
+        </button>
+
+        <button class="nav-item" data-tab="exif">
+          <div class="nav-pill">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>
+            </svg>
+          </div>
+          <span class="nav-label">修改EXIF</span>
+        </button>
+
+        <button class="nav-item" data-tab="export">
+          <div class="nav-pill">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </div>
+          <span class="nav-label">格式压缩</span>
+        </button>
+      </nav>
+
+      <!-- Center Interactive Canvas Stage -->
+      <main class="stage-area" id="stageArea">
+        <input type="file" id="fileInput" accept="image/*" hidden />
+
+        <div class="canvas-viewport" id="canvasViewport">
+          <!-- Empty State Dropzone -->
+          <div class="dropzone-card" id="dropzoneCard">
+            <div class="dropzone-icon-wrap">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <h1 class="dropzone-title">拖入图片，或点击选择文件</h1>
+            <p class="dropzone-desc">所有处理均在浏览器本地完成，图片不会上传至任何服务器。支持 Ctrl+V 粘贴剪贴板图片。</p>
+            <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:4px;">
+              <button id="btnSelectFile" class="btn btn-filled btn-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+                </svg>
+                选择本地图片
+              </button>
+              <button id="btnLoadDemo" class="btn btn-tonal btn-lg">
+                体验内置示例图
+              </button>
+            </div>
+            <div class="dropzone-features">
+              <span class="feature-tag">像素级无损裁剪</span>
+              <span class="feature-tag">等比/自由改尺寸</span>
+              <span class="feature-tag">二进制 EXIF 读写</span>
+              <span class="feature-tag">JPEG / PNG / WebP / BMP</span>
+              <span class="feature-tag">有损/无损压缩率控制</span>
+            </div>
+          </div>
+
+          <!-- Interactive Image Preview + Crop Box + Split Compare -->
+          <div class="canvas-stage-inner" id="canvasStageInner">
+            <canvas id="previewCanvas"></canvas>
+
+            <!-- Interactive Cropper Overlay -->
+            <div class="crop-overlay" id="cropOverlay">
+              <div class="crop-box" id="cropBox">
+                <div class="crop-grid"></div>
+                <div class="crop-hud-badge" id="cropHudBadge">1600 × 1066 px</div>
+                <div class="crop-handle" data-dir="nw"></div>
+                <div class="crop-handle" data-dir="n"></div>
+                <div class="crop-handle" data-dir="ne"></div>
+                <div class="crop-handle" data-dir="e"></div>
+                <div class="crop-handle" data-dir="se"></div>
+                <div class="crop-handle" data-dir="s"></div>
+                <div class="crop-handle" data-dir="sw"></div>
+                <div class="crop-handle" data-dir="w"></div>
+              </div>
+            </div>
+
+            <!-- Before / After Split Curtain Comparison -->
+            <div class="compare-overlay" id="compareOverlay">
+              <canvas id="compareAfterCanvas"></canvas>
+              <div class="compare-label left">原图未压缩</div>
+              <div class="compare-label right" id="compareRightLabel">输出预览</div>
+              <div class="compare-divider" id="compareDivider" style="left:50%">
+                <div class="compare-handle">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 3 12 9 6"/><polyline points="15 6 21 12 15 18"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Canvas Toolbar -->
+        <div class="stage-toolbar" id="stageToolbar">
+          <button class="icon-btn" id="btnRotateLeft" title="逆时针旋转 90°">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btnRotateRight" title="顺时针旋转 90°">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btnFlipH" title="水平镜像翻转">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2"/><path d="M12 14v2"/><path d="M12 8v2"/><path d="M12 2v2"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btnFlipV" title="垂直上下翻转">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
+            </svg>
+          </button>
+          <div class="toolbar-divider"></div>
+          <button class="btn btn-text btn-sm" id="btnResetAll" title="重置所有编辑参数">重置</button>
+        </div>
+      </main>
+
+      <!-- ====================================================================
+           RIGHT INSPECTOR & EXPORT DOCK
+           ==================================================================== -->
+      <aside class="inspector-dock">
+        <div class="inspector-scroll" id="inspectorScroll">
+
+          <!-- PANEL 1: 无损裁剪 (LOSSLESS CROP) -->
+          <section class="tool-panel active" id="panel-crop">
+            <div class="m3-card">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <div class="card-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="card-title">无损像素裁剪</h2>
+                    <p class="card-subtitle">直接提取原始像素区域，无二次重采样损耗</p>
+                  </div>
+                </div>
+                <button class="btn btn-text btn-sm" id="btnResetCrop">全图</button>
+              </div>
+
+              <!-- Aspect Ratio Chips -->
+              <div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:7px;color:var(--md-sys-color-on-surface-variant);">裁剪比例预设</div>
+                <div class="chip-group" id="cropRatioChips">
+                  <button class="m3-chip active" data-ratio="free">自由比例</button>
+                  <button class="m3-chip" data-ratio="original">原始比例</button>
+                  <button class="m3-chip" data-ratio="1:1">1:1 头像</button>
+                  <button class="m3-chip" data-ratio="4:3">4:3 标准</button>
+                  <button class="m3-chip" data-ratio="3:2">3:2 相机</button>
+                  <button class="m3-chip" data-ratio="16:9">16:9 宽屏</button>
+                  <button class="m3-chip" data-ratio="9:16">9:16 竖屏</button>
+                  <button class="m3-chip" data-ratio="2:3">2:3 海报</button>
+                </div>
+              </div>
+
+              <!-- Exact Pixel Coordinates -->
+              <div class="field-grid-2">
+                <div class="m3-field">
+                  <label for="inpCropX">起点 X (px)</label>
+                  <input type="number" id="inpCropX" min="0" step="1" value="0" />
+                </div>
+                <div class="m3-field">
+                  <label for="inpCropY">起点 Y (px)</label>
+                  <input type="number" id="inpCropY" min="0" step="1" value="0" />
+                </div>
+                <div class="m3-field">
+                  <label for="inpCropW">裁剪宽度 (px)</label>
+                  <input type="number" id="inpCropW" min="16" step="1" value="1600" />
+                </div>
+                <div class="m3-field">
+                  <label for="inpCropH">裁剪高度 (px)</label>
+                  <input type="number" id="inpCropH" min="16" step="1" value="1066" />
+                </div>
+              </div>
+
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-tonal btn-sm" style="flex:1;" id="btnCenterCrop">选区居中</button>
+                <button class="btn btn-outlined btn-sm" style="flex:1;" id="btnToggleCropOverlay">显示/隐藏框线</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- PANEL 2: 修改尺寸 (RESIZE) -->
+          <section class="tool-panel" id="panel-resize">
+            <div class="m3-card">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <div class="card-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="card-title">修改输出尺寸</h2>
+                    <p class="card-subtitle" id="resizeSourceInfo">当前裁剪区域: 1600 × 1066 px</p>
+                  </div>
+                </div>
+                <button class="btn btn-text btn-sm" id="btnResetResize">1:1 原尺寸</button>
+              </div>
+
+              <!-- Width / Aspect Lock / Height -->
+              <div class="resize-lock-row">
+                <div class="m3-field">
+                  <label for="inpResizeW">目标宽度 (px)</label>
+                  <input type="number" id="inpResizeW" min="1" max="16384" step="1" value="1600" />
+                </div>
+
+                <button class="icon-btn active" id="btnLockAspect" title="锁定/解锁宽高比" aria-label="锁定宽高比">
+                  <svg id="iconLockClosed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <svg id="iconLockOpen" style="display:none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                  </svg>
+                </button>
+
+                <div class="m3-field">
+                  <label for="inpResizeH">目标高度 (px)</label>
+                  <input type="number" id="inpResizeH" min="1" max="16384" step="1" value="1066" />
+                </div>
+              </div>
+
+              <!-- Percentage Scale Slider -->
+              <div class="slider-block">
+                <div class="slider-header">
+                  <span>按百分比缩放</span>
+                  <span class="slider-value-pill" id="scalePercentBadge">100%</span>
+                </div>
+                <input type="range" class="m3-slider" id="sliderScalePercent" min="10" max="200" step="5" value="100" />
+              </div>
+
+              <!-- Quick Scale Presets -->
+              <div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:7px;color:var(--md-sys-color-on-surface-variant);">快捷缩放与常用分辨率</div>
+                <div class="chip-group" id="resizePresetChips">
+                  <button class="m3-chip" data-scale="0.25">25%</button>
+                  <button class="m3-chip" data-scale="0.5">50%</button>
+                  <button class="m3-chip" data-scale="0.75">75%</button>
+                  <button class="m3-chip active" data-scale="1">100%</button>
+                  <button class="m3-chip" data-scale="1.5">150%</button>
+                  <button class="m3-chip" data-scale="2">200%</button>
+                  <button class="m3-chip" data-maxw="1280">720P (1280w)</button>
+                  <button class="m3-chip" data-maxw="1920">1080P (1920w)</button>
+                  <button class="m3-chip" data-maxw="3840">4K (3840w)</button>
+                </div>
+              </div>
+
+              <!-- Interpolation Algorithm -->
+              <div class="m3-field">
+                <label for="selResample">重采样插值算法</label>
+                <select id="selResample">
+                  <option value="high" selected>高质量平滑 (Bicubic / Lanczos 适合照片)</option>
+                  <option value="medium">标准双线性 (Bilinear 均衡速度)</option>
+                  <option value="pixelated">最近邻硬边缘 (Nearest 适合像素画/二维码)</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- PANEL 3: 修改 EXIF (EDIT EXIF METADATA) -->
+          <section class="tool-panel" id="panel-exif">
+            <div class="m3-card">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <div class="card-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="card-title">修改 EXIF 元数据</h2>
+                    <p class="card-subtitle" id="exifStatusSubtitle">支持读写 JPEG 二进制 APP1 EXIF 标签</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Strip All EXIF Privacy Switch -->
+              <div class="m3-switch-row" style="background:var(--md-sys-color-surface-container-high);padding:10px 12px;border-radius:16px;">
+                <div class="m3-switch-label">
+                  <span class="m3-switch-title">导出时清空全部 EXIF 隐私信息</span>
+                  <span class="m3-switch-desc">彻底移除设备型号、拍摄时间与 GPS 坐标</span>
+                </div>
+                <label class="m3-switch">
+                  <input type="checkbox" id="chkStripExif" />
+                  <span class="m3-switch-track"></span>
+                  <span class="m3-switch-thumb"></span>
+                </label>
+              </div>
+
+              <div id="exifFormFields" style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-tonal btn-sm" style="flex:1;" id="btnFillSampleExif">填入示例相机参数</button>
+                  <button class="btn btn-outlined btn-sm" style="flex:1;" id="btnClearGpsOnly">仅清除 GPS 定位</button>
+                </div>
+
+                <div class="exif-section-label">设备与作者信息</div>
+                <div class="field-grid-2">
+                  <div class="m3-field">
+                    <label for="exifMake">相机品牌 (Make)</label>
+                    <input type="text" id="exifMake" placeholder="如 Apple / Sony" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifModel">设备型号 (Model)</label>
+                    <input type="text" id="exifModel" placeholder="如 iPhone 16 Pro" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifArtist">作者 / 摄影师 (Artist)</label>
+                    <input type="text" id="exifArtist" placeholder="摄影师署名" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifSoftware">软件名称 (Software)</label>
+                    <input type="text" id="exifSoftware" placeholder="PixelStudio H5" />
+                  </div>
+                </div>
+
+                <div class="field-grid-2">
+                  <div class="m3-field">
+                    <label for="exifDateTime">拍摄时间 (DateTime)</label>
+                    <input type="text" id="exifDateTime" placeholder="YYYY:MM:DD HH:MM:SS" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifCopyright">版权声明 (Copyright)</label>
+                    <input type="text" id="exifCopyright" placeholder="© 2025 All Rights Reserved" />
+                  </div>
+                </div>
+
+                <div class="m3-field">
+                  <label for="exifDescription">图片描述 / 备注 (ImageDescription)</label>
+                  <input type="text" id="exifDescription" placeholder="输入图片标题或拍摄备注..." />
+                </div>
+
+                <div class="exif-section-label">曝光与光学参数</div>
+                <div class="field-grid-2">
+                  <div class="m3-field">
+                    <label for="exifFNumber">光圈值 (FNumber, f/)</label>
+                    <input type="number" id="exifFNumber" step="0.1" min="0.7" max="64" placeholder="如 1.8" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifExposure">快门速度 (秒, 如 0.008)</label>
+                    <input type="number" id="exifExposure" step="0.0001" min="0.00001" max="3600" placeholder="如 0.008 (1/125s)" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifIso">ISO 感光度</label>
+                    <input type="number" id="exifIso" step="1" min="25" max="409600" placeholder="如 100" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifFocal">等效焦距 (mm)</label>
+                    <input type="number" id="exifFocal" step="0.5" min="1" max="2000" placeholder="如 24" />
+                  </div>
+                </div>
+
+                <div class="exif-section-label">GPS 地理位置 (十进制度数)</div>
+                <div class="field-grid-2">
+                  <div class="m3-field">
+                    <label for="exifGpsLat">纬度 Latitude (+北/-南)</label>
+                    <input type="number" id="exifGpsLat" step="0.000001" min="-90" max="90" placeholder="如 31.230416" />
+                  </div>
+                  <div class="m3-field">
+                    <label for="exifGpsLng">经度 Longitude (+东/-西)</label>
+                    <input type="number" id="exifGpsLng" step="0.000001" min="-180" max="180" placeholder="如 121.473701" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- PANEL 4 / ALWAYS VISIBLE ON DESKTOP: 格式转换与压缩控制 -->
+          <section class="tool-panel desktop-only-export-card active" id="panel-export">
+            <div class="m3-card">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <div class="card-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="card-title">格式转换与压缩</h2>
+                    <p class="card-subtitle">支持有损 / 无损模式与精确压缩率控制</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Output Format Segmented Buttons -->
+              <div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:7px;color:var(--md-sys-color-on-surface-variant);">目标文件格式</div>
+                <div class="segmented-group" id="formatSegmented">
+                  <button class="segmented-btn active" data-format="image/jpeg">JPEG</button>
+                  <button class="segmented-btn" data-format="image/png">PNG</button>
+                  <button class="segmented-btn" data-format="image/webp">WebP</button>
+                  <button class="segmented-btn" data-format="image/bmp">BMP</button>
+                  <button class="segmented-btn" data-format="image/avif" id="btnFormatAvif" style="display:none;">AVIF</button>
+                </div>
+              </div>
+
+              <!-- JPEG Background Matte Option (shown when JPEG is selected) -->
+              <div class="matte-row" id="jpegMatteRow">
+                <span>透明通道背景填充色</span>
+                <div class="matte-swatches">
+                  <button class="matte-swatch active" data-matte="#ffffff" style="background:#ffffff" title="纯白背景"></button>
+                  <button class="matte-swatch" data-matte="#000000" style="background:#000000" title="纯黑背景"></button>
+                  <button class="matte-swatch" data-matte="#f3f4f6" style="background:#f3f4f6" title="浅灰背景"></button>
+                  <input type="color" id="inpMatteColor" value="#ffffff" title="自定义背景色" style="width:24px;height:24px;border:none;background:none;cursor:pointer;padding:0;" />
+                </div>
+              </div>
+
+              <!-- Lossy vs Lossless Segmented Control -->
+              <div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:7px;color:var(--md-sys-color-on-surface-variant);">压缩方式</div>
+                <div class="segmented-group" id="compressionModeSegmented">
+                  <button class="segmented-btn active" data-mode="lossy">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>
+                    有损压缩 (指定压缩率)
+                  </button>
+                  <button class="segmented-btn" data-mode="lossless">
+                    无损压缩 (100% 原始保真)
+                  </button>
+                </div>
+              </div>
+
+              <!-- Lossy Compression Rate Slider & Exact Input -->
+              <div id="lossyControlsBlock" class="slider-block" style="background:var(--md-sys-color-surface-container-high);padding:12px;border-radius:16px;">
+                <div class="slider-header">
+                  <span>压缩率 (Compression Rate)</span>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="slider-value-pill" id="compressionRateLabel">压缩 20% · 画质 80%</span>
+                  </div>
+                </div>
+                <input type="range" class="m3-slider" id="sliderCompression" min="1" max="95" step="1" value="20" />
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;">
+                  <div class="chip-group" id="compressionPresets">
+                    <button class="m3-chip" data-comp="5">轻度 5%</button>
+                    <button class="m3-chip active" data-comp="20">均衡 20%</button>
+                    <button class="m3-chip" data-comp="45">高压缩 45%</button>
+                    <button class="m3-chip" data-comp="70">极限 70%</button>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                    <input type="number" id="inpCompressionExact" min="1" max="99" value="20" style="width:52px;height:30px;border-radius:8px;border:1px solid var(--md-sys-color-outline);background:var(--md-sys-color-surface-container-lowest);text-align:center;font-family:var(--font-mono);font-size:12px;font-weight:700;" />
+                    <span style="font-size:12px;font-weight:600;">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lossless Hint Banner -->
+              <div id="losslessBanner" class="m3-banner" style="display:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span id="losslessBannerText">当前为无损压缩模式：保留全部像素细节与色彩精度，不进行有损量化丢弃。</span>
+              </div>
+
+              <!-- Output Filename Input -->
+              <div class="m3-field">
+                <label for="inpOutputFilename">导出文件名 (自动追加扩展名)</label>
+                <input type="text" id="inpOutputFilename" value="pixelstudio_edited" placeholder="输入文件名" />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Sticky Export & File Size Estimation Dock -->
+        <div class="export-sticky-footer">
+          <div class="size-compare-row">
+            <div class="size-metric">
+              <span class="size-metric-label" id="exportSpecSummary">未加载图片 · JPEG</span>
+              <span class="size-metric-val" id="estimatedSizeLabel">-- KB</span>
+            </div>
+            <span class="delta-pill" id="sizeDeltaPill">等待图片</span>
+          </div>
+          <button id="btnDownloadExport" class="btn btn-filled btn-lg" style="width:100%;" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span id="btnDownloadText">导出保存图片</span>
+          </button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- M3 Snackbar Toast -->
+  <div class="m3-snackbar" id="m3Snackbar" role="status" aria-live="polite"></div>
+
+  <!-- ========================================================================
+       VANILLA JAVASCRIPT ENGINE:
+       1. Pure-JS Binary JPEG EXIF APP1 Parser & Serializer + PNG eXIf/tEXt Writer
+       2. Pure-JS BMP 24-bit Lossless Encoder + PNG Lossy Quantizer
+       3. Pixel-Exact Cropper, Rotator, Flipper & Resampler
+       4. Material You Interactive UI Controller & Responsive State Sync
+       ======================================================================== -->
+  <script>
+    (() => {
+      "use strict";
+
+      /* ======================================================================
+         MODULE 1: BINARY EXIF PARSER & SERIALIZER (ZERO DEPENDENCIES)
+         Reads & writes authentic TIFF/EXIF APP1 metadata in JPEG & PNG
+         ====================================================================== */
+      const ExifEngine = {
+        // Parse EXIF from ArrayBuffer (supports JPEG APP1 and PNG eXIf/tEXt)
+        parse(arrayBuffer) {
+          const view = new DataView(arrayBuffer);
+          const result = {
+            hasExif: false,
+            make: "",
+            model: "",
+            artist: "",
+            software: "",
+            dateTime: "",
+            copyright: "",
+            description: "",
+            fNumber: "",
+            exposureTime: "",
+            iso: "",
+            focalLength: "",
+            gpsLat: "",
+            gpsLng: ""
+          };
+
+          if (view.byteLength < 12) return result;
+
+          // Check JPEG SOI: 0xFFD8
+          if (view.getUint16(0, false) === 0xffd8) {
+            let offset = 2;
+            while (offset + 4 <= view.byteLength) {
+              const marker = view.getUint16(offset, false);
+              if (marker === 0xffda || marker === 0xffd9) break; // SOS or EOI
+              if ((marker & 0xff00) !== 0xff00) break;
+              const segLen = view.getUint16(offset + 2, false);
+              if (marker === 0xffe1 && offset + 10 <= view.byteLength) {
+                // Check "Exif\0\0"
+                if (
+                  view.getUint32(offset + 4, false) === 0x45786966 &&
+                  view.getUint16(offset + 8, false) === 0x0000
+                ) {
+                  this._parseTiff(view, offset + 10, segLen - 8, result);
+                  result.hasExif = true;
+                  break;
+                }
+              }
+              offset += 2 + segLen;
+            }
+          }
+          // Check PNG Signature: 89 50 4E 47 0D 0A 1A 0A
+          else if (view.getUint32(0, false) === 0x89504e47 && view.getUint32(4, false) === 0x0d0a1a0a) {
+            let offset = 8;
+            const decoder = new TextDecoder("utf-8");
+            while (offset + 12 <= view.byteLength) {
+              const length = view.getUint32(offset, false);
+              const type = view.getUint32(offset + 4, false);
+              if (offset + 12 + length > view.byteLength) break;
+              if (type === 0x65584966) { // 'eXIf'
+                this._parseTiff(view, offset + 8, length, result);
+                result.hasExif = true;
+              } else if (type === 0x74455874) { // 'tEXt'
+                const chunkBytes = new Uint8Array(arrayBuffer, offset + 8, length);
+                const nullIdx = chunkBytes.indexOf(0);
+                if (nullIdx > 0) {
+                  const key = decoder.decode(chunkBytes.subarray(0, nullIdx));
+                  const val = decoder.decode(chunkBytes.subarray(nullIdx + 1));
+                  if (key === "Author" || key === "Artist") result.artist = val;
+                  if (key === "Software") result.software = val;
+                  if (key === "Copyright") result.copyright = val;
+                  if (key === "Description" || key === "Comment") result.description = val;
+                  result.hasExif = true;
+                }
+              }
+              offset += 12 + length;
+            }
+          }
+          return result;
+        },
+
+        _parseTiff(view, tiffStart, maxLen, out) {
+          if (tiffStart + 8 > view.byteLength) return;
+          const endian = view.getUint16(tiffStart, false);
+          const little = endian === 0x4949; // 'II'
+          if (!little && endian !== 0x4d4d) return;
+          if (view.getUint16(tiffStart + 2, little) !== 0x002a) return;
+
+          const ifd0Offset = view.getUint32(tiffStart + 4, little);
+          const pointers = this._readIfd(view, tiffStart, tiffStart + ifd0Offset, little, out, "IFD0");
+
+          if (pointers.exifIfd) {
+            this._readIfd(view, tiffStart, tiffStart + pointers.exifIfd, little, out, "EXIF");
+          }
+          if (pointers.gpsIfd) {
+            this._readIfd(view, tiffStart, tiffStart + pointers.gpsIfd, little, out, "GPS");
+          }
+        },
+
+        _readIfd(view, tiffStart, dirOffset, little, out, group) {
+          const ptrs = { exifIfd: 0, gpsIfd: 0 };
+          if (dirOffset + 2 > view.byteLength) return ptrs;
+          const count = view.getUint16(dirOffset, little);
+          const typeSizes = [0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8];
+
+          let gpsLatRef = "N", gpsLngRef = "E";
+          let gpsLatArr = null, gpsLngArr = null;
+
+          for (let i = 0; i < count; i++) {
+            const entryOffset = dirOffset + 2 + i * 12;
+            if (entryOffset + 12 > view.byteLength) break;
+            const tag = view.getUint16(entryOffset, little);
+            const type = view.getUint16(entryOffset + 2, little);
+            const numValues = view.getUint32(entryOffset + 4, little);
+            const byteCount = (typeSizes[type] || 1) * numValues;
+            const valOffset = byteCount <= 4
+              ? entryOffset + 8
+              : tiffStart + view.getUint32(entryOffset + 8, little);
+
+            if (valOffset + byteCount > view.byteLength) continue;
+
+            if (group === "IFD0") {
+              if (tag === 0x010f) out.make = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x0110) out.model = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x0131) out.software = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x0132 && !out.dateTime) out.dateTime = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x013b) out.artist = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x8298) out.copyright = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x010e) out.description = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x8769) ptrs.exifIfd = view.getUint32(valOffset, little);
+              else if (tag === 0x8825) ptrs.gpsIfd = view.getUint32(valOffset, little);
+            } else if (group === "EXIF") {
+              if (tag === 0x9003) out.dateTime = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x829a) {
+                const r = this._readRational(view, valOffset, little);
+                if (r > 0) out.exposureTime = String(Number(r.toFixed(6)));
+              } else if (tag === 0x829d) {
+                const r = this._readRational(view, valOffset, little);
+                if (r > 0) out.fNumber = String(Number(r.toFixed(2)));
+              } else if (tag === 0x8827) {
+                const iso = type === 3 ? view.getUint16(valOffset, little) : view.getUint32(valOffset, little);
+                if (iso > 0) out.iso = String(iso);
+              } else if (tag === 0x920a) {
+                const r = this._readRational(view, valOffset, little);
+                if (r > 0) out.focalLength = String(Number(r.toFixed(1)));
+              }
+            } else if (group === "GPS") {
+              if (tag === 0x0001) gpsLatRef = this._readAscii(view, valOffset, numValues) || "N";
+              else if (tag === 0x0002 && numValues >= 3) {
+                gpsLatArr = [
+                  this._readRational(view, valOffset, little),
+                  this._readRational(view, valOffset + 8, little),
+                  this._readRational(view, valOffset + 16, little)
+                ];
+              } else if (tag === 0x0003) gpsLngRef = this._readAscii(view, valOffset, numValues) || "E";
+              else if (tag === 0x0004 && numValues >= 3) {
+                gpsLngArr = [
+                  this._readRational(view, valOffset, little),
+                  this._readRational(view, valOffset + 8, little),
+                  this._readRational(view, valOffset + 16, little)
+                ];
+              }
+            }
+          }
+
+          if (group === "GPS") {
+            if (gpsLatArr) {
+              let deg = gpsLatArr[0] + gpsLatArr[1] / 60 + gpsLatArr[2] / 3600;
+              if (gpsLatRef.toUpperCase().startsWith("S")) deg = -deg;
+              out.gpsLat = String(Number(deg.toFixed(6)));
+            }
+            if (gpsLngArr) {
+              let deg = gpsLngArr[0] + gpsLngArr[1] / 60 + gpsLngArr[2] / 3600;
+              if (gpsLngRef.toUpperCase().startsWith("W")) deg = -deg;
+              out.gpsLng = String(Number(deg.toFixed(6)));
+            }
+          }
+
+          return ptrs;
+        },
+
+        _readAscii(view, offset, len) {
+          const bytes = [];
+          for (let i = 0; i < len; i++) {
+            const b = view.getUint8(offset + i);
+            if (b === 0) break;
+            bytes.push(b);
+          }
+          try {
+            return new TextDecoder("utf-8").decode(new Uint8Array(bytes)).trim();
+          } catch {
+            return String.fromCharCode(...bytes).trim();
+          }
+        },
+
+        _readRational(view, offset, little) {
+          const num = view.getUint32(offset, little);
+          const den = view.getUint32(offset + 4, little);
+          return den === 0 ? 0 : num / den;
+        },
+
+        // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
+        buildTiffBuffer(meta) {
+          const encoder = new TextEncoder();
+          const makeStr = (meta.make || "").trim();
+          const modelStr = (meta.model || "").trim();
+          const artistStr = (meta.artist || "").trim();
+          const softwareStr = (meta.software || "").trim();
+          const dateTimeStr = (meta.dateTime || "").trim();
+          const copyrightStr = (meta.copyright || "").trim();
+          const descStr = (meta.description || "").trim();
+
+          const fNum = parseFloat(meta.fNumber);
+          const expTime = parseFloat(meta.exposureTime);
+          const isoVal = parseInt(meta.iso, 10);
+          const focalVal = parseFloat(meta.focalLength);
+          const latVal = parseFloat(meta.gpsLat);
+          const lngVal = parseFloat(meta.gpsLng);
+
+          const hasExifSub = Boolean(dateTimeStr || fNum > 0 || expTime > 0 || isoVal > 0 || focalVal > 0);
+          const hasGpsSub = !Number.isNaN(latVal) || !Number.isNaN(lngVal);
+
+          // Collect IFD0 entries
+          const ifd0 = [];
+          const addAscii = (list, tag, str) => {
+            if (!str) return;
+            const raw = encoder.encode(str);
+            const buf = new Uint8Array(raw.length + 1);
+            buf.set(raw);
+            buf[raw.length] = 0;
+            list.push({ tag, type: 2, count: buf.length, data: buf });
+          };
+          const addShort = (list, tag, val) => {
+            const buf = new Uint8Array(2);
+            new DataView(buf.buffer).setUint16(0, val, true);
+            list.push({ tag, type: 3, count: 1, data: buf });
+          };
+          const addLong = (list, tag, val) => {
+            const buf = new Uint8Array(4);
+            new DataView(buf.buffer).setUint32(0, val, true);
+            list.push({ tag, type: 4, count: 1, data: buf });
+          };
+          const addRational = (list, tag, floatVal, scale = 10000) => {
+            if (!(floatVal > 0)) return;
+            const buf = new Uint8Array(8);
+            const dv = new DataView(buf.buffer);
+            if (floatVal < 1) {
+              const den = Math.round(1 / floatVal);
+              dv.setUint32(0, 1, true);
+              dv.setUint32(4, Math.max(1, den), true);
+            } else {
+              dv.setUint32(0, Math.round(floatVal * scale), true);
+              dv.setUint32(4, scale, true);
+            }
+            list.push({ tag, type: 5, count: 1, data: buf });
+          };
+
+          addAscii(ifd0, 0x010e, descStr);
+          addAscii(ifd0, 0x010f, makeStr);
+          addAscii(ifd0, 0x0110, modelStr);
+          addShort(ifd0, 0x0112, 1); // Orientation: Normal (since pixels are already rotated)
+          addAscii(ifd0, 0x0131, softwareStr);
+          addAscii(ifd0, 0x0132, dateTimeStr);
+          addAscii(ifd0, 0x013b, artistStr);
+          addAscii(ifd0, 0x8298, copyrightStr);
+
+          const exifIfd = [];
+          if (hasExifSub) {
+            addRational(exifIfd, 0x829a, expTime, 1000000);
+            addRational(exifIfd, 0x829d, fNum, 100);
+            if (isoVal > 0) addShort(exifIfd, 0x8827, Math.min(65535, isoVal));
+            addAscii(exifIfd, 0x9003, dateTimeStr);
+            addRational(exifIfd, 0x920a, focalVal, 100);
+          }
+
+          const gpsIfd = [];
+          if (hasGpsSub) {
+            const writeDms = (tag, degFloat) => {
+              const abs = Math.abs(degFloat);
+              const d = Math.floor(abs);
+              const mFloat = (abs - d) * 60;
+              const m = Math.floor(mFloat);
+              const s = (mFloat - m) * 60;
+              const buf = new Uint8Array(24);
+              const dv = new DataView(buf.buffer);
+              dv.setUint32(0, d, true); dv.setUint32(4, 1, true);
+              dv.setUint32(8, m, true); dv.setUint32(12, 1, true);
+              dv.setUint32(16, Math.round(s * 10000), true); dv.setUint32(20, 10000, true);
+              gpsIfd.push({ tag, type: 5, count: 3, data: buf });
+            };
+            if (!Number.isNaN(latVal)) {
+              addAscii(gpsIfd, 0x0001, latVal >= 0 ? "N" : "S");
+              writeDms(0x0002, latVal);
+            }
+            if (!Number.isNaN(lngVal)) {
+              addAscii(gpsIfd, 0x0003, lngVal >= 0 ? "E" : "W");
+              writeDms(0x0004, lngVal);
+            }
+          }
+
+          // Reserve pointer entries in IFD0
+          let exifPtrEntry = null;
+          let gpsPtrEntry = null;
+          if (exifIfd.length > 0) {
+            exifPtrEntry = { tag: 0x8769, type: 4, count: 1, data: new Uint8Array(4) };
+            ifd0.push(exifPtrEntry);
+          }
+          if (gpsIfd.length > 0) {
+            gpsPtrEntry = { tag: 0x8825, type: 4, count: 1, data: new Uint8Array(4) };
+            ifd0.push(gpsPtrEntry);
+          }
+
+          // TIFF spec requires IFD entries sorted by ascending tag
+          ifd0.sort((a, b) => a.tag - b.tag);
+          exifIfd.sort((a, b) => a.tag - b.tag);
+          gpsIfd.sort((a, b) => a.tag - b.tag);
+
+          const calcIfdSize = (entries) => {
+            if (entries.length === 0) return 0;
+            let size = 2 + entries.length * 12 + 4;
+            for (const e of entries) {
+              if (e.data.length > 4) {
+                size += e.data.length + (e.data.length % 2);
+              }
+            }
+            return size;
+          };
+
+          const headerSize = 8;
+          const ifd0Offset = headerSize;
+          const ifd0Size = calcIfdSize(ifd0);
+          const exifOffset = ifd0Offset + ifd0Size;
+          const exifSize = calcIfdSize(exifIfd);
+          const gpsOffset = exifOffset + exifSize;
+          const gpsSize = calcIfdSize(gpsIfd);
+          const totalSize = gpsOffset + gpsSize;
+
+          if (exifPtrEntry) {
+            new DataView(exifPtrEntry.data.buffer).setUint32(0, exifOffset, true);
+          }
+          if (gpsPtrEntry) {
+            new DataView(gpsPtrEntry.data.buffer).setUint32(0, gpsOffset, true);
+          }
+
+          const outBuf = new Uint8Array(totalSize);
+          const dv = new DataView(outBuf.buffer);
+          // Little Endian 'II' + 42 + IFD0 offset
+          outBuf[0] = 0x49; outBuf[1] = 0x49;
+          dv.setUint16(2, 0x002a, true);
+          dv.setUint32(4, ifd0Offset, true);
+
+          const writeIfd = (entries, startOffset) => {
+            if (entries.length === 0) return;
+            dv.setUint16(startOffset, entries.length, true);
+            let dataCursor = startOffset + 2 + entries.length * 12 + 4;
+            entries.forEach((e, idx) => {
+              const row = startOffset + 2 + idx * 12;
+              dv.setUint16(row, e.tag, true);
+              dv.setUint16(row + 2, e.type, true);
+              dv.setUint32(row + 4, e.count, true);
+              if (e.data.length <= 4) {
+                outBuf.set(e.data, row + 8);
+              } else {
+                dv.setUint32(row + 8, dataCursor, true);
+                outBuf.set(e.data, dataCursor);
+                dataCursor += e.data.length + (e.data.length % 2);
+              }
+            });
+            // Next IFD = 0
+            dv.setUint32(startOffset + 2 + entries.length * 12, 0, true);
+          };
+
+          writeIfd(ifd0, ifd0Offset);
+          writeIfd(exifIfd, exifOffset);
+          writeIfd(gpsIfd, gpsOffset);
+
+          return outBuf;
+        },
+
+        // Inject or strip APP1 EXIF segment in a JPEG Uint8Array
+        processJpegBytes(jpegBytes, stripExif, meta) {
+          if (jpegBytes.length < 4 || jpegBytes[0] !== 0xff || jpegBytes[1] !== 0xd8) {
+            return jpegBytes;
+          }
+          // Strip any existing APP1 (0xFFE1) or COM (0xFFFE) segments after SOI
+          const chunks = [new Uint8Array([0xff, 0xd8])];
+          let pos = 2;
+          while (pos + 4 <= jpegBytes.length) {
+            const m1 = jpegBytes[pos];
+            const m2 = jpegBytes[pos + 1];
+            if (m1 !== 0xff) {
+              chunks.push(jpegBytes.subarray(pos));
+              break;
+            }
+            if (m2 === 0xda || m2 === 0xd9) {
+              chunks.push(jpegBytes.subarray(pos));
+              break;
+            }
+            const segLen = (jpegBytes[pos + 2] << 8) | jpegBytes[pos + 3];
+            const nextPos = pos + 2 + segLen;
+            // Skip existing APP1 (0xE1) if we are stripping or replacing EXIF
+            if (m2 !== 0xe1) {
+              chunks.push(jpegBytes.subarray(pos, nextPos));
+            }
+            pos = nextPos;
+          }
+
+          if (!stripExif) {
+            const tiffBytes = this.buildTiffBuffer(meta);
+            const app1Len = 2 + 6 + tiffBytes.length;
+            const app1Seg = new Uint8Array(2 + app1Len);
+            app1Seg[0] = 0xff;
+            app1Seg[1] = 0xe1;
+            app1Seg[2] = (app1Len >> 8) & 0xff;
+            app1Seg[3] = app1Len & 0xff;
+            // "Exif\0\0"
+            app1Seg.set([0x45, 0x78, 0x69, 0x66, 0x00, 0x00], 4);
+            app1Seg.set(tiffBytes, 10);
+            chunks.splice(1, 0, app1Seg);
+          }
+
+          const totalLen = chunks.reduce((sum, c) => sum + c.length, 0);
+          const merged = new Uint8Array(totalLen);
+          let cursor = 0;
+          for (const c of chunks) {
+            merged.set(c, cursor);
+            cursor += c.length;
+          }
+          return merged;
+        },
+
+        // Inject PNG eXIf chunk into a PNG Uint8Array
+        injectPngExif(pngBytes, stripExif, meta) {
+          if (stripExif || pngBytes.length < 33) return pngBytes;
+          const tiffBytes = this.buildTiffBuffer(meta);
+          // Build 'eXIf' chunk: [4B len][4B 'eXIf'][tiffBytes][4B CRC32]
+          const chunk = new Uint8Array(12 + tiffBytes.length);
+          const dv = new DataView(chunk.buffer);
+          dv.setUint32(0, tiffBytes.length, false);
+          chunk.set([0x65, 0x58, 0x49, 0x66], 4); // 'eXIf'
+          chunk.set(tiffBytes, 8);
+          const crc = this._crc32(chunk.subarray(4, 8 + tiffBytes.length));
+          dv.setUint32(8 + tiffBytes.length, crc >>> 0, false);
+
+          // Insert right after IHDR chunk (8 bytes sig + 25 bytes IHDR = 33)
+          const out = new Uint8Array(pngBytes.length + chunk.length);
+          out.set(pngBytes.subarray(0, 33), 0);
+          out.set(chunk, 33);
+          out.set(pngBytes.subarray(33), 33 + chunk.length);
+          return out;
+        },
+
+        // Inject EXIF chunk into a RIFF/WebP container (upgrades simple VP8/VP8L files to VP8X extended format)
+        injectWebpExif(webpBytes, stripExif, meta, canvasW, canvasH) {
+          if (stripExif || webpBytes.length < 20) return webpBytes;
+          const tag = (off) => String.fromCharCode(webpBytes[off], webpBytes[off + 1], webpBytes[off + 2], webpBytes[off + 3]);
+          if (tag(0) !== "RIFF" || tag(8) !== "WEBP") return webpBytes;
+
+          // Walk existing chunks
+          const chunks = [];
+          let pos = 12;
+          while (pos + 8 <= webpBytes.length) {
+            const fourcc = tag(pos);
+            const size = webpBytes[pos + 4] | (webpBytes[pos + 5] << 8) | (webpBytes[pos + 6] << 16) | (webpBytes[pos + 7] << 24);
+            const padded = size + (size & 1);
+            if (pos + 8 + size > webpBytes.length) break;
+            chunks.push({ fourcc, payload: webpBytes.subarray(pos + 8, pos + 8 + size) });
+            pos += 8 + padded;
+          }
+          if (chunks.length === 0) return webpBytes;
+
+          // Build / update VP8X header with the EXIF flag
+          let vp8x = chunks.find((c) => c.fourcc === "VP8X");
+          const body = chunks.filter((c) => c.fourcc !== "VP8X" && c.fourcc !== "EXIF");
+          if (vp8x) {
+            const p = new Uint8Array(vp8x.payload);
+            p[0] |= 0x08; // E (EXIF) flag
+            vp8x = { fourcc: "VP8X", payload: p };
+          } else {
+            let hasAlpha = false;
+            const vp8l = chunks.find((c) => c.fourcc === "VP8L");
+            if (vp8l && vp8l.payload.length >= 5 && vp8l.payload[0] === 0x2f) {
+              const bits = vp8l.payload[1] | (vp8l.payload[2] << 8) | (vp8l.payload[3] << 16) | (vp8l.payload[4] << 24);
+              hasAlpha = ((bits >>> 28) & 1) === 1;
+            }
+            if (chunks.some((c) => c.fourcc === "ALPH")) hasAlpha = true;
+            const p = new Uint8Array(10);
+            p[0] = 0x08 | (hasAlpha ? 0x10 : 0);
+            const w = Math.max(1, canvasW) - 1;
+            const h = Math.max(1, canvasH) - 1;
+            p[4] = w & 0xff; p[5] = (w >> 8) & 0xff; p[6] = (w >> 16) & 0xff;
+            p[7] = h & 0xff; p[8] = (h >> 8) & 0xff; p[9] = (h >> 16) & 0xff;
+            vp8x = { fourcc: "VP8X", payload: p };
+          }
+
+          const exifChunk = { fourcc: "EXIF", payload: this.buildTiffBuffer(meta) };
+          const ordered = [vp8x, ...body, exifChunk];
+
+          let total = 12;
+          for (const c of ordered) total += 8 + c.payload.length + (c.payload.length & 1);
+          const out = new Uint8Array(total);
+          const dv = new DataView(out.buffer);
+          out.set([0x52, 0x49, 0x46, 0x46], 0); // RIFF
+          dv.setUint32(4, total - 8, true);
+          out.set([0x57, 0x45, 0x42, 0x50], 8); // WEBP
+          let cursor = 12;
+          for (const c of ordered) {
+            for (let i = 0; i < 4; i++) out[cursor + i] = c.fourcc.charCodeAt(i);
+            dv.setUint32(cursor + 4, c.payload.length, true);
+            out.set(c.payload, cursor + 8);
+            cursor += 8 + c.payload.length + (c.payload.length & 1);
+          }
+          return out;
+        },
+
+        _crc32(bytes) {
+          if (!this._crcTable) {
+            const t = new Uint32Array(256);
+            for (let n = 0; n < 256; n++) {
+              let c = n;
+              for (let k = 0; k < 8; k++) {
+                c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+              }
+              t[n] = c;
+            }
+            this._crcTable = t;
+          }
+          let crc = 0xffffffff;
+          for (let i = 0; i < bytes.length; i++) {
+            crc = this._crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+          }
+          return (crc ^ 0xffffffff) >>> 0;
+        }
+      };
+
+      /* ======================================================================
+         MODULE 2: PURE-JS BMP LOSSLESS ENCODER & PNG QUANTIZER
+         ====================================================================== */
+      const CodecHelper = {
+        // Pure-JS 24-bit Uncompressed Lossless BMP Encoder
+        encodeBmp(imageData) {
+          const { width, height, data } = imageData;
+          const rowStride = Math.floor((24 * width + 31) / 32) * 4;
+          const pixelArraySize = rowStride * height;
+          const fileSize = 54 + pixelArraySize;
+          const buffer = new ArrayBuffer(fileSize);
+          const view = new DataView(buffer);
+          const bytes = new Uint8Array(buffer);
+
+          // BITMAPFILEHEADER (14 bytes)
+          bytes[0] = 0x42; // 'B'
+          bytes[1] = 0x4d; // 'M'
+          view.setUint32(2, fileSize, true);
+          view.setUint32(10, 54, true);
+
+          // BITMAPINFOHEADER (40 bytes)
+          view.setUint32(14, 40, true);
+          view.setInt32(18, width, true);
+          view.setInt32(22, height, true); // Positive = bottom-up
+          view.setUint16(26, 1, true);
+          view.setUint16(28, 24, true); // 24-bit RGB
+          view.setUint32(34, pixelArraySize, true);
+          view.setInt32(38, 2835, true);
+          view.setInt32(42, 2835, true);
+
+          // Pixel Data (BGR bottom-up); opaque fast path, white matte for semi-transparent pixels
+          for (let y = 0; y < height; y++) {
+            const srcRow = (height - 1 - y) * width * 4;
+            const dstRow = 54 + y * rowStride;
+            for (let x = 0; x < width; x++) {
+              const s = srcRow + x * 4;
+              const d = dstRow + x * 3;
+              const alpha = data[s + 3];
+              if (alpha === 255) {
+                bytes[d] = data[s + 2];
+                bytes[d + 1] = data[s + 1];
+                bytes[d + 2] = data[s];
+              } else {
+                const a = alpha / 255;
+                const bg = 255 * (1 - a);
+                bytes[d] = (data[s + 2] * a + bg + 0.5) | 0;     // B
+                bytes[d + 1] = (data[s + 1] * a + bg + 0.5) | 0; // G
+                bytes[d + 2] = (data[s] * a + bg + 0.5) | 0;     // R
+              }
+            }
+          }
+          return new Blob([buffer], { type: "image/bmp" });
+        },
+
+        // 4x4 Bayer threshold matrix for ordered dithering (normalized to -0.5..0.5)
+        _bayer4: [
+          0, 8, 2, 10,
+          12, 4, 14, 6,
+          3, 11, 1, 9,
+          15, 7, 13, 5
+        ].map((v) => v / 16 - 0.5),
+
+        // Perceptual color quantization + ordered dithering for Lossy PNG compression.
+        // Fewer distinct colors => far better DEFLATE ratio, while dithering suppresses banding.
+        quantizeCanvasForLossyPng(ctx, width, height, quality) {
+          // Map quality (0.01..0.99) to levels per channel (4..64)
+          const levels = Math.max(4, Math.min(64, Math.round(4 + quality * 60)));
+          const step = 255 / (levels - 1);
+          const imgData = ctx.getImageData(0, 0, width, height);
+          const d = imgData.data;
+          const bayer = this._bayer4;
+          const ditherAmp = step * 0.9;
+
+          // Pre-compute per-pixel-position dither LUTs (16 positions × 256 values)
+          const luts = new Array(16);
+          for (let p = 0; p < 16; p++) {
+            const lut = new Uint8Array(256);
+            const offset = bayer[p] * ditherAmp;
+            for (let v = 0; v < 256; v++) {
+              const q = Math.round((v + offset) / step) * step;
+              lut[v] = q < 0 ? 0 : q > 255 ? 255 : Math.round(q);
+            }
+            luts[p] = lut;
+          }
+
+          let i = 0;
+          for (let y = 0; y < height; y++) {
+            const rowBase = (y & 3) << 2;
+            for (let x = 0; x < width; x++, i += 4) {
+              const lut = luts[rowBase | (x & 3)];
+              d[i] = lut[d[i]];
+              d[i + 1] = lut[d[i + 1]];
+              d[i + 2] = lut[d[i + 2]];
+              const a = d[i + 3];
+              if (a > 0 && a < 255) d[i + 3] = lut[a];
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+        }
+      };
+
+      /* ======================================================================
+         MODULE 3: APPLICATION STATE & DOM REFERENCES
+         ====================================================================== */
+      const state = {
+        hasImage: false,
+        fileName: "sample.jpg",
+        originalBytes: 0,
+        originalMime: "image/jpeg",
+        sourceImg: null,        // Original HTMLImageElement
+        transformedCanvas: null, // Source after rotation/flip
+        rotW: 0,
+        rotH: 0,
+
+        // Transform
+        rotation: 0, // 0, 90, 180, 270
+        flipH: false,
+        flipV: false,
+
+        // Crop (in rotated source pixel coordinates)
+        cropX: 0,
+        cropY: 0,
+        cropW: 0,
+        cropH: 0,
+        cropRatio: "free", // 'free', 'original', '1:1', '4:3', '3:2', '16:9', '9:16', '2:3'
+        showCropOverlay: true,
+
+        // Resize
+        targetW: 0,
+        targetH: 0,
+        lockAspect: true,
+        resampleQuality: "high",
+
+        // EXIF
+        stripExif: false,
+        exif: {
+          make: "",
+          model: "",
+          artist: "",
+          software: "PixelStudio H5",
+          dateTime: "",
+          copyright: "",
+          description: "",
+          fNumber: "",
+          exposureTime: "",
+          iso: "",
+          focalLength: "",
+          gpsLat: "",
+          gpsLng: ""
+        },
+
+        // Format & Compression
+        outputFormat: "image/jpeg",
+        matteColor: "#ffffff",
+        compressionMode: "lossy", // 'lossy' | 'lossless'
+        compressionRate: 20,      // 1..95% (quality = 100 - compressionRate)
+
+        // Live Output Cache
+        outputBlob: null,
+        outputUrl: null,
+        compareMode: false,
+        compareSplit: 0.5,
+        activeTab: "crop"
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      const els = {
+        fileInput: $("fileInput"),
+        stageArea: $("stageArea"),
+        canvasViewport: $("canvasViewport"),
+        dropzoneCard: $("dropzoneCard"),
+        canvasStageInner: $("canvasStageInner"),
+        previewCanvas: $("previewCanvas"),
+        cropOverlay: $("cropOverlay"),
+        cropBox: $("cropBox"),
+        cropHudBadge: $("cropHudBadge"),
+        compareOverlay: $("compareOverlay"),
+        compareAfterCanvas: $("compareAfterCanvas"),
+        compareDivider: $("compareDivider"),
+        compareRightLabel: $("compareRightLabel"),
+        stageToolbar: $("stageToolbar"),
+
+        fileSummaryPill: $("fileSummaryPill"),
+        fileNameLabel: $("fileNameLabel"),
+        fileMetaLabel: $("fileMetaLabel"),
+        btnToggleCompareTop: $("btnToggleCompareTop"),
+
+        // Crop inputs
+        inpCropX: $("inpCropX"),
+        inpCropY: $("inpCropY"),
+        inpCropW: $("inpCropW"),
+        inpCropH: $("inpCropH"),
+
+        // Resize inputs
+        resizeSourceInfo: $("resizeSourceInfo"),
+        inpResizeW: $("inpResizeW"),
+        inpResizeH: $("inpResizeH"),
+        btnLockAspect: $("btnLockAspect"),
+        iconLockClosed: $("iconLockClosed"),
+        iconLockOpen: $("iconLockOpen"),
+        sliderScalePercent: $("sliderScalePercent"),
+        scalePercentBadge: $("scalePercentBadge"),
+        selResample: $("selResample"),
+
+        // EXIF inputs
+        chkStripExif: $("chkStripExif"),
+        exifFormFields: $("exifFormFields"),
+        exifStatusSubtitle: $("exifStatusSubtitle"),
+        exifMake: $("exifMake"),
+        exifModel: $("exifModel"),
+        exifArtist: $("exifArtist"),
+        exifSoftware: $("exifSoftware"),
+        exifDateTime: $("exifDateTime"),
+        exifCopyright: $("exifCopyright"),
+        exifDescription: $("exifDescription"),
+        exifFNumber: $("exifFNumber"),
+        exifExposure: $("exifExposure"),
+        exifIso: $("exifIso"),
+        exifFocal: $("exifFocal"),
+        exifGpsLat: $("exifGpsLat"),
+        exifGpsLng: $("exifGpsLng"),
+
+        // Export & Compression
+        jpegMatteRow: $("jpegMatteRow"),
+        inpMatteColor: $("inpMatteColor"),
+        lossyControlsBlock: $("lossyControlsBlock"),
+        sliderCompression: $("sliderCompression"),
+        compressionRateLabel: $("compressionRateLabel"),
+        inpCompressionExact: $("inpCompressionExact"),
+        losslessBanner: $("losslessBanner"),
+        losslessBannerText: $("losslessBannerText"),
+        inpOutputFilename: $("inpOutputFilename"),
+        exportSpecSummary: $("exportSpecSummary"),
+        estimatedSizeLabel: $("estimatedSizeLabel"),
+        sizeDeltaPill: $("sizeDeltaPill"),
+        btnDownloadExport: $("btnDownloadExport"),
+        btnDownloadText: $("btnDownloadText"),
+        snackbar: $("m3Snackbar")
+      };
+
+      /* ======================================================================
+         MODULE 4: UTILITIES & TOAST FEEDBACK
+         ====================================================================== */
+      let toastTimer = null;
+      function showToast(msg) {
+        els.snackbar.textContent = msg;
+        els.snackbar.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          els.snackbar.classList.remove("show");
+        }, 2600);
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes || bytes <= 0) return "0 B";
+        const units = ["B", "KB", "MB", "GB"];
+        let i = 0;
+        let val = bytes;
+        while (val >= 1024 && i < units.length - 1) {
+          val /= 1024;
+          i++;
+        }
+        return `${val < 10 && i > 0 ? val.toFixed(2) : val.toFixed(1)} ${units[i]}`;
+      }
+
+      function getNowExifDate() {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}:${pad(d.getMonth() + 1)}:${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
+
+      function parseRatioValue(ratioStr) {
+        if (ratioStr === "free") return null;
+        if (ratioStr === "original") return state.rotW / Math.max(1, state.rotH);
+        const [w, h] = ratioStr.split(":").map(Number);
+        return w && h ? w / h : null;
+      }
+
+      /* ======================================================================
+         MODULE 5: IMAGE LOADING & DEMO IMAGE GENERATOR
+         ====================================================================== */
+      // Canvas pixel budget: iOS Safari caps a single canvas at ~16.7M px; stay safe elsewhere too
+      const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const MAX_CANVAS_PIXELS = IS_IOS ? 16000000 : 64000000;
+
+      // Downscale an oversized decoded image into a safe working source (only for extreme inputs)
+      function ensureSafeSource(img) {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (w * h <= MAX_CANVAS_PIXELS) return { source: img, w, h, downscaled: false };
+        const s = Math.sqrt(MAX_CANVAS_PIXELS / (w * h));
+        const nw = Math.max(1, Math.floor(w * s));
+        const nh = Math.max(1, Math.floor(h * s));
+        const c = document.createElement("canvas");
+        c.width = nw;
+        c.height = nh;
+        const cx = c.getContext("2d");
+        cx.imageSmoothingEnabled = true;
+        cx.imageSmoothingQuality = "high";
+        cx.drawImage(img, 0, 0, nw, nh);
+        return { source: c, w: nw, h: nh, downscaled: true };
+      }
+
+      async function loadImageFromFile(file) {
+        const looksLikeImage = file && (
+          (file.type && file.type.startsWith("image/")) ||
+          /\.(jpe?g|png|webp|gif|bmp|avif|svg|heic|heif|tiff?)$/i.test(file.name || "")
+        );
+        if (!looksLikeImage) {
+          showToast("请选择有效的图片文件 (JPEG / PNG / WebP / BMP / GIF)");
+          return;
+        }
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const parsedExif = ExifEngine.parse(arrayBuffer);
+          const blobUrl = URL.createObjectURL(file);
+
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(blobUrl);
+            if (!img.naturalWidth || !img.naturalHeight) {
+              showToast("无法获取图片尺寸（可能是无固有尺寸的 SVG），请换一张图片");
+              return;
+            }
+            initWorkspaceWithImage(img, {
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.type,
+              exif: parsedExif
+            });
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(blobUrl);
+            showToast("图片解码失败，请尝试其他图片格式");
+          };
+          img.src = blobUrl;
+        } catch (err) {
+          showToast("读取图片出错：" + err.message);
+        }
+      }
+
+      // Generate a rich, photographic 1600x1066 sample image with realistic EXIF
+      function loadDemoImage() {
+        const w = 1600, h = 1066;
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext("2d");
+
+        // Vibrant sunset / alpine studio backdrop
+        const sky = ctx.createLinearGradient(0, 0, w, h);
+        sky.addColorStop(0, "#0f2942");
+        sky.addColorStop(0.45, "#1f6e7a");
+        sky.addColorStop(0.78, "#e68a5c");
+        sky.addColorStop(1, "#f7c97e");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, w, h);
+
+        // Glowing sun disc
+        const sun = ctx.createRadialGradient(1180, 320, 10, 1180, 320, 340);
+        sun.addColorStop(0, "rgba(255, 250, 224, 0.96)");
+        sun.addColorStop(0.35, "rgba(255, 210, 130, 0.45)");
+        sun.addColorStop(1, "rgba(255, 180, 100, 0)");
+        ctx.fillStyle = sun;
+        ctx.fillRect(0, 0, w, h);
+
+        // Layered geometric mountains for sharp edge inspection during compression
+        const drawMountain = (points, color) => {
+          ctx.beginPath();
+          ctx.moveTo(0, h);
+          points.forEach(([px, py]) => ctx.lineTo(px, py));
+          ctx.lineTo(w, h);
+          ctx.closePath();
+          ctx.fillStyle = color;
+          ctx.fill();
+        };
+
+        drawMountain([[0, 680], [280, 460], [560, 620], [920, 390], [1280, 560], [1600, 440]], "rgba(18, 43, 58, 0.72)");
+        drawMountain([[0, 780], [360, 580], [740, 740], [1100, 520], [1420, 690], [1600, 610]], "rgba(11, 27, 38, 0.88)");
+        drawMountain([[0, 880], [450, 740], [880, 860], [1320, 710], [1600, 820]], "#08141d");
+
+        // Crisp architectural grid & typography card for sharpness testing
+        ctx.fillStyle = "rgba(255, 255, 255, 0.14)";
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") {
+          ctx.roundRect(84, 84, 460, 210, 28);
+        } else {
+          ctx.rect(84, 84, 460, 210); // Fallback for older engines without roundRect
+        }
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 36px system-ui, sans-serif";
+        ctx.fillText("PIXEL STUDIO · 4K TEST", 116, 152);
+        ctx.font = "500 20px system-ui, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.88)";
+        ctx.fillText("1600 × 1066 px · 色彩过渡与边缘锐度测试样本", 116, 194);
+        ctx.font = "600 16px monospace";
+        ctx.fillStyle = "#9cf1ed";
+        ctx.fillText("f/1.8  ·  1/250s  ·  ISO 100  ·  24mm", 116, 238);
+
+        c.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            initWorkspaceWithImage(img, {
+              fileName: "alpine_sunset_demo.jpg",
+              fileSize: blob.size,
+              mimeType: "image/jpeg",
+              exif: {
+                hasExif: true,
+                make: "SONY",
+                model: "ILCE-7M4",
+                artist: "PixelStudio Photographer",
+                software: "PixelStudio H5 Engine",
+                dateTime: getNowExifDate(),
+                copyright: "© 2025 PixelStudio",
+                description: "Alpine Sunset Sample Photo",
+                fNumber: "1.8",
+                exposureTime: "0.004",
+                iso: "100",
+                focalLength: "24",
+                gpsLat: "31.230416",
+                gpsLng: "121.473701"
+              }
+            });
+            showToast("已加载内置高分辨率示例图与 EXIF 参数");
+          };
+          img.src = url;
+        }, "image/jpeg", 0.95);
+      }
+
+      function initWorkspaceWithImage(img, meta) {
+        const safe = ensureSafeSource(img);
+        state.hasImage = true;
+        state.sourceImg = safe.source;
+        state.sourceW = safe.w;
+        state.sourceH = safe.h;
+        state.fileName = meta.fileName;
+        state.originalBytes = meta.fileSize;
+        state.originalMime = meta.mimeType;
+
+        // Reset transforms
+        state.rotation = 0;
+        state.flipH = false;
+        state.flipV = false;
+        state.cropRatio = "free";
+        state.lockAspect = true;
+        state.stripExif = false;
+
+        // Leave comparison mode when a new image arrives (stale "after" preview otherwise)
+        if (state.compareMode) {
+          state.compareMode = false;
+          els.btnToggleCompareTop.classList.remove("btn-filled");
+          els.btnToggleCompareTop.classList.add("btn-tonal");
+          els.compareOverlay.classList.remove("visible");
+        }
+
+        // Re-sync aspect-lock button visuals with reset state
+        els.btnLockAspect.classList.add("active");
+        els.iconLockClosed.style.display = "block";
+        els.iconLockOpen.style.display = "none";
+
+        if (safe.downscaled) {
+          showToast(`原图 ${img.naturalWidth}×${img.naturalHeight} 超出浏览器画布像素上限，已安全缩放至 ${safe.w}×${safe.h} 进行处理`);
+        }
+
+        // Populate EXIF
+        state.exif = {
+          make: meta.exif.make || "",
+          model: meta.exif.model || "",
+          artist: meta.exif.artist || "",
+          software: meta.exif.software || "PixelStudio H5",
+          dateTime: meta.exif.dateTime || "",
+          copyright: meta.exif.copyright || "",
+          description: meta.exif.description || "",
+          fNumber: meta.exif.fNumber || "",
+          exposureTime: meta.exif.exposureTime || "",
+          iso: meta.exif.iso || "",
+          focalLength: meta.exif.focalLength || "",
+          gpsLat: meta.exif.gpsLat || "",
+          gpsLng: meta.exif.gpsLng || ""
+        };
+        syncExifToInputs();
+
+        els.exifStatusSubtitle.textContent = meta.exif.hasExif
+          ? "已从原图读取到 EXIF 标签，可直接编辑或清空"
+          : "原图无 EXIF 数据，可在此写入新的相机参数";
+
+        // Set default output filename without extension
+        const baseName = meta.fileName.replace(/\.[^/.]+$/, "") || "image";
+        els.inpOutputFilename.value = `${baseName}_edited`;
+
+        // Update UI visibility
+        els.dropzoneCard.style.display = "none";
+        els.canvasStageInner.classList.add("visible");
+        els.stageToolbar.classList.add("visible");
+        els.fileSummaryPill.classList.add("visible");
+        els.fileNameLabel.textContent = meta.fileName;
+        els.fileMetaLabel.textContent = `${img.naturalWidth}×${img.naturalHeight} · ${formatBytes(meta.fileSize)}`;
+        els.btnToggleCompareTop.disabled = false;
+        els.btnDownloadExport.disabled = false;
+
+        // Reset active ratio chip
+        document.querySelectorAll("#cropRatioChips .m3-chip").forEach((ch) => {
+          ch.classList.toggle("active", ch.dataset.ratio === "free");
+        });
+
+        rebuildTransformedSource(true);
+      }
+
+      /* ======================================================================
+         MODULE 6: TRANSFORM, CROP & RESIZE PIPELINE
+         ====================================================================== */
+      function rebuildTransformedSource(resetCropAndResize = false) {
+        if (!state.sourceImg) return;
+        const srcW = state.sourceW;
+        const srcH = state.sourceH;
+        const isSwapped = state.rotation === 90 || state.rotation === 270;
+        const rotW = isSwapped ? srcH : srcW;
+        const rotH = isSwapped ? srcW : srcH;
+
+        const tc = document.createElement("canvas");
+        tc.width = rotW;
+        tc.height = rotH;
+        const ctx = tc.getContext("2d");
+
+        ctx.save();
+        ctx.translate(rotW / 2, rotH / 2);
+        ctx.rotate((state.rotation * Math.PI) / 180);
+        ctx.scale(state.flipH ? -1 : 1, state.flipV ? -1 : 1);
+        ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
+        ctx.restore();
+
+        state.transformedCanvas = tc;
+        state.rotW = rotW;
+        state.rotH = rotH;
+
+        if (resetCropAndResize) {
+          state.cropX = 0;
+          state.cropY = 0;
+          state.cropW = rotW;
+          state.cropH = rotH;
+          state.targetW = rotW;
+          state.targetH = rotH;
+          els.sliderScalePercent.value = 100;
+          els.scalePercentBadge.textContent = "100%";
+        } else {
+          // Clamp existing crop within new rotated bounds
+          state.cropW = Math.min(state.cropW, rotW);
+          state.cropH = Math.min(state.cropH, rotH);
+          state.cropX = Math.max(0, Math.min(state.cropX, rotW - state.cropW));
+          state.cropY = Math.max(0, Math.min(state.cropY, rotH - state.cropH));
+          syncResizeFromCrop(1);
+        }
+
+        syncCropInputs();
+        syncResizeInputs();
+        renderStageCanvas();
+        scheduleOutputEncode();
+      }
+
+      function syncCropInputs() {
+        els.inpCropX.value = Math.round(state.cropX);
+        els.inpCropY.value = Math.round(state.cropY);
+        els.inpCropW.value = Math.round(state.cropW);
+        els.inpCropH.value = Math.round(state.cropH);
+        els.cropHudBadge.textContent = `${Math.round(state.cropW)} × ${Math.round(state.cropH)} px`;
+        els.resizeSourceInfo.textContent = `当前裁剪区域: ${Math.round(state.cropW)} × ${Math.round(state.cropH)} px`;
+      }
+
+      function syncResizeFromCrop(scaleFactor = null) {
+        const cw = Math.max(1, Math.round(state.cropW));
+        const ch = Math.max(1, Math.round(state.cropH));
+        if (scaleFactor !== null) {
+          state.targetW = Math.max(1, Math.round(cw * scaleFactor));
+          state.targetH = Math.max(1, Math.round(ch * scaleFactor));
+        } else if (state.lockAspect) {
+          const aspect = cw / ch;
+          state.targetH = Math.max(1, Math.round(state.targetW / aspect));
+        }
+        syncResizeInputs();
+      }
+
+      function syncResizeInputs() {
+        els.inpResizeW.value = Math.round(state.targetW);
+        els.inpResizeH.value = Math.round(state.targetH);
+        const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
+        els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
+        els.scalePercentBadge.textContent = `${pct}%`;
+      }
+
+      // Fit stage canvas cleanly into viewport while preserving exact aspect ratio
+      function renderStageCanvas() {
+        if (!state.hasImage || !state.transformedCanvas) return;
+
+        const vpRect = els.canvasViewport.getBoundingClientRect();
+        const maxW = Math.max(120, vpRect.width - 36);
+        const maxH = Math.max(120, vpRect.height - 48);
+
+        // In compare mode the stage shows the OUTPUT (cropped + resized), so follow its aspect ratio;
+        // otherwise follow the full rotated source so the crop box maps 1:1 onto it.
+        const imgAspect = state.compareMode
+          ? Math.max(1, state.targetW) / Math.max(1, state.targetH)
+          : state.rotW / state.rotH;
+        let dispW = maxW;
+        let dispH = dispW / imgAspect;
+        if (dispH > maxH) {
+          dispH = maxH;
+          dispW = dispH * imgAspect;
+        }
+
+        dispW = Math.round(dispW);
+        dispH = Math.round(dispH);
+
+        els.canvasStageInner.style.width = `${dispW}px`;
+        els.canvasStageInner.style.height = `${dispH}px`;
+
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        els.previewCanvas.width = Math.round(dispW * dpr);
+        els.previewCanvas.height = Math.round(dispH * dpr);
+
+        const ctx = els.previewCanvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.clearRect(0, 0, els.previewCanvas.width, els.previewCanvas.height);
+        if (state.compareMode) {
+          // "Before" half = untouched cropped source pixels
+          ctx.drawImage(
+            state.transformedCanvas,
+            state.cropX, state.cropY, state.cropW, state.cropH,
+            0, 0, els.previewCanvas.width, els.previewCanvas.height
+          );
+        } else {
+          ctx.drawImage(state.transformedCanvas, 0, 0, els.previewCanvas.width, els.previewCanvas.height);
+        }
+
+        updateCropBoxVisual(dispW, dispH);
+      }
+
+      function updateCropBoxVisual(dispW, dispH) {
+        if (!state.hasImage) return;
+        const innerW = dispW || els.canvasStageInner.clientWidth;
+        const innerH = dispH || els.canvasStageInner.clientHeight;
+        if (!innerW || !innerH) return;
+
+        els.cropOverlay.classList.toggle("visible", state.showCropOverlay && !state.compareMode);
+
+        const scaleX = innerW / state.rotW;
+        const scaleY = innerH / state.rotH;
+        const topPx = state.cropY * scaleY;
+
+        els.cropBox.style.left = `${state.cropX * scaleX}px`;
+        els.cropBox.style.top = `${topPx}px`;
+        els.cropBox.style.width = `${state.cropW * scaleX}px`;
+        els.cropBox.style.height = `${state.cropH * scaleY}px`;
+        // Keep the size badge readable when the box touches the top edge
+        els.cropBox.classList.toggle("hud-inside", topPx < 30);
+      }
+
+      // Nudge / resize the crop box with the keyboard (arrows = move, Shift+arrows = resize, Alt = 10px steps)
+      els.cropBox.setAttribute("tabindex", "0");
+      els.cropBox.setAttribute("aria-label", "裁剪选区，方向键移动，Shift+方向键调整大小");
+      els.cropBox.addEventListener("keydown", (e) => {
+        if (!state.hasImage) return;
+        const stepPx = e.altKey ? 10 : 1;
+        let { cropX: x, cropY: y, cropW: w, cropH: h } = state;
+        const lockedRatio = parseRatioValue(state.cropRatio);
+        let handled = true;
+        if (e.shiftKey) {
+          if (e.key === "ArrowRight") w += stepPx;
+          else if (e.key === "ArrowLeft") w -= stepPx;
+          else if (e.key === "ArrowDown") h += stepPx;
+          else if (e.key === "ArrowUp") h -= stepPx;
+          else handled = false;
+          if (handled && lockedRatio) {
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") w = h * lockedRatio; else h = w / lockedRatio;
+          }
+        } else {
+          if (e.key === "ArrowRight") x += stepPx;
+          else if (e.key === "ArrowLeft") x -= stepPx;
+          else if (e.key === "ArrowDown") y += stepPx;
+          else if (e.key === "ArrowUp") y -= stepPx;
+          else handled = false;
+        }
+        if (!handled) return;
+        e.preventDefault();
+        w = Math.max(16, Math.min(state.rotW, Math.round(w)));
+        h = Math.max(16, Math.min(state.rotH, Math.round(h)));
+        x = Math.max(0, Math.min(state.rotW - w, Math.round(x)));
+        y = Math.max(0, Math.min(state.rotH - h, Math.round(y)));
+        state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
+        syncCropInputs();
+        syncResizeFromCrop(parseFloat(els.sliderScalePercent.value) / 100 || 1);
+        updateCropBoxVisual();
+        scheduleOutputEncode();
+      });
+
+      /* ======================================================================
+         MODULE 7: INTERACTIVE POINTER & TOUCH CROPPER (8 HANDLES + PAN)
+         ====================================================================== */
+      let cropDragState = null;
+
+      els.cropBox.addEventListener("pointerdown", (e) => {
+        if (!state.hasImage) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const handle = e.target.closest(".crop-handle");
+        const dir = handle ? handle.dataset.dir : "move";
+        els.cropBox.setPointerCapture(e.pointerId);
+
+        cropDragState = {
+          pointerId: e.pointerId,
+          dir,
+          startX: e.clientX,
+          startY: e.clientY,
+          initCropX: state.cropX,
+          initCropY: state.cropY,
+          initCropW: state.cropW,
+          initCropH: state.cropH,
+          stageW: els.canvasStageInner.clientWidth,
+          stageH: els.canvasStageInner.clientHeight
+        };
+      });
+
+      window.addEventListener("pointermove", (e) => {
+        if (!cropDragState || e.pointerId !== cropDragState.pointerId) return;
+        const { dir, startX, startY, initCropX, initCropY, initCropW, initCropH, stageW, stageH } = cropDragState;
+        const dxPx = ((e.clientX - startX) / stageW) * state.rotW;
+        const dyPx = ((e.clientY - startY) / stageH) * state.rotH;
+        const minSize = 16;
+        const lockedRatio = parseRatioValue(state.cropRatio);
+
+        let nx = initCropX;
+        let ny = initCropY;
+        let nw = initCropW;
+        let nh = initCropH;
+
+        if (dir === "move") {
+          nx = Math.max(0, Math.min(state.rotW - initCropW, initCropX + dxPx));
+          ny = Math.max(0, Math.min(state.rotH - initCropH, initCropY + dyPx));
+        } else {
+          // Edge & Corner resizing
+          if (dir.includes("e")) {
+            nw = Math.max(minSize, Math.min(state.rotW - initCropX, initCropW + dxPx));
+          }
+          if (dir.includes("s")) {
+            nh = Math.max(minSize, Math.min(state.rotH - initCropY, initCropH + dyPx));
+          }
+          if (dir.includes("w")) {
+            const maxRight = initCropX + initCropW;
+            nx = Math.max(0, Math.min(maxRight - minSize, initCropX + dxPx));
+            nw = maxRight - nx;
+          }
+          if (dir.includes("n")) {
+            const maxBottom = initCropY + initCropH;
+            ny = Math.max(0, Math.min(maxBottom - minSize, initCropY + dyPx));
+            nh = maxBottom - ny;
+          }
+
+          // Enforce locked aspect ratio if selected (anchor = the edge/corner opposite to the dragged one)
+          if (lockedRatio) {
+            const anchorRight = dir.includes("w");  // dragging a west handle keeps the right edge fixed
+            const anchorBottom = dir.includes("n"); // dragging a north handle keeps the bottom edge fixed
+            const right = initCropX + initCropW;
+            const bottom = initCropY + initCropH;
+
+            if (dir === "n" || dir === "s") nw = nh * lockedRatio;
+            else nh = nw / lockedRatio;
+
+            // Available room in each axis from the anchored side
+            const roomW = anchorRight ? right : state.rotW - nx;
+            const roomH = anchorBottom ? bottom : state.rotH - ny;
+            if (nw > roomW) { nw = roomW; nh = nw / lockedRatio; }
+            if (nh > roomH) { nh = roomH; nw = nh * lockedRatio; }
+            if (nw < minSize) { nw = minSize; nh = nw / lockedRatio; }
+            if (nh < minSize) { nh = minSize; nw = nh * lockedRatio; }
+
+            if (anchorRight) nx = right - nw;
+            if (anchorBottom) ny = bottom - nh;
+            if (dir === "n" || dir === "s") nx = Math.max(0, Math.min(state.rotW - nw, initCropX)); // keep horizontally anchored
+            if (dir === "e" || dir === "w") ny = Math.max(0, Math.min(state.rotH - nh, initCropY));
+          }
+        }
+
+        state.cropX = Math.max(0, Math.round(nx));
+        state.cropY = Math.max(0, Math.round(ny));
+        state.cropW = Math.max(minSize, Math.min(state.rotW - state.cropX, Math.round(nw)));
+        state.cropH = Math.max(minSize, Math.min(state.rotH - state.cropY, Math.round(nh)));
+
+        syncCropInputs();
+        const currentScale = parseFloat(els.sliderScalePercent.value) / 100 || 1;
+        syncResizeFromCrop(currentScale);
+        updateCropBoxVisual();
+      });
+
+      const endCropDrag = (e) => {
+        if (cropDragState && e.pointerId === cropDragState.pointerId) {
+          cropDragState = null;
+          scheduleOutputEncode();
+        }
+      };
+      window.addEventListener("pointerup", endCropDrag);
+      window.addEventListener("pointercancel", endCropDrag);
+
+      function applyAspectRatioPreset(ratioStr) {
+        state.cropRatio = ratioStr;
+        const r = parseRatioValue(ratioStr);
+        if (!r || !state.hasImage) {
+          updateCropBoxVisual();
+          return;
+        }
+        // Fit largest centered crop box of aspect ratio r inside rotW x rotH
+        let nw = state.rotW;
+        let nh = nw / r;
+        if (nh > state.rotH) {
+          nh = state.rotH;
+          nw = nh * r;
+        }
+        state.cropW = Math.round(nw);
+        state.cropH = Math.round(nh);
+        state.cropX = Math.round((state.rotW - state.cropW) / 2);
+        state.cropY = Math.round((state.rotH - state.cropH) / 2);
+
+        syncCropInputs();
+        const currentScale = parseFloat(els.sliderScalePercent.value) / 100 || 1;
+        syncResizeFromCrop(currentScale);
+        updateCropBoxVisual();
+        scheduleOutputEncode();
+      }
+
+      /* ======================================================================
+         MODULE 8: LIVE ENCODING ENGINE (LOSSY / LOSSLESS + EXIF + COMPARISON)
+         ====================================================================== */
+      let encodeTimer = null;
+      let encodeSeq = 0; // Monotonic token: results of superseded (older) encodes are discarded
+      function scheduleOutputEncode() {
+        if (!state.hasImage) return;
+        clearTimeout(encodeTimer);
+        setEncodePending(true);
+        encodeTimer = setTimeout(() => {
+          generateOutputBlob();
+        }, 140);
+      }
+
+      function setEncodePending(pending) {
+        els.estimatedSizeLabel.classList.toggle("pending", pending);
+        els.btnDownloadExport.disabled = pending || !state.hasImage;
+        els.btnDownloadText.textContent = pending ? "编码中…" : "导出保存图片";
+      }
+
+      function selectFormatUI(mime) {
+        state.outputFormat = mime;
+        document.querySelectorAll("#formatSegmented .segmented-btn").forEach((b) => {
+          b.classList.toggle("active", b.dataset.format === mime);
+        });
+        els.jpegMatteRow.style.display = (mime === "image/jpeg" || mime === "image/bmp") ? "flex" : "none";
+      }
+
+      function generateOutputBlob() {
+        if (!state.hasImage || !state.transformedCanvas) return;
+        const seq = ++encodeSeq;
+
+        const outW = Math.max(1, Math.round(state.targetW));
+        const outH = Math.max(1, Math.round(state.targetH));
+
+        if (outW * outH > MAX_CANVAS_PIXELS || outW > 16384 || outH > 16384) {
+          showToast(`目标尺寸 ${outW}×${outH} 超出浏览器画布上限，请降低输出尺寸`);
+          setEncodePending(false);
+          return;
+        }
+
+        const outCanvas = document.createElement("canvas");
+        outCanvas.width = outW;
+        outCanvas.height = outH;
+        const ctx = outCanvas.getContext("2d");
+        if (!ctx) {
+          showToast("无法创建画布，可能是内存不足");
+          setEncodePending(false);
+          return;
+        }
+
+        // Fill background matte if target format has no alpha channel (JPEG / BMP)
+        if (state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp") {
+          ctx.fillStyle = state.matteColor;
+          ctx.fillRect(0, 0, outW, outH);
+        }
+
+        // Configure resampling quality
+        if (state.resampleQuality === "pixelated") {
+          ctx.imageSmoothingEnabled = false;
+        } else {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = state.resampleQuality; // 'high' or 'medium'
+        }
+
+        // Draw exact cropped source region into target output dimensions
+        ctx.drawImage(
+          state.transformedCanvas,
+          Math.round(state.cropX),
+          Math.round(state.cropY),
+          Math.round(state.cropW),
+          Math.round(state.cropH),
+          0,
+          0,
+          outW,
+          outH
+        );
+
+        const isLossless = state.compressionMode === "lossless";
+        const quality = isLossless ? 1.0 : Math.max(0.01, Math.min(0.99, (100 - state.compressionRate) / 100));
+
+        // Handle BMP natively via pure JS encoder
+        if (state.outputFormat === "image/bmp") {
+          const imgData = ctx.getImageData(0, 0, outW, outH);
+          const bmpBlob = CodecHelper.encodeBmp(imgData);
+          finalizeOutputBlob(bmpBlob, outW, outH);
+          return;
+        }
+
+        // If PNG + Lossy mode is chosen, perform perceptual color quantization so compression slider genuinely reduces size
+        if (state.outputFormat === "image/png" && !isLossless) {
+          CodecHelper.quantizeCanvasForLossyPng(ctx, outW, outH, quality);
+        }
+
+        const requestedFormat = state.outputFormat;
+        outCanvas.toBlob(async (rawBlob) => {
+          if (seq !== encodeSeq) return; // A newer encode has been requested meanwhile
+
+          // Browser returned null OR silently substituted PNG for an unsupported format
+          if (!rawBlob || (rawBlob.type && rawBlob.type !== requestedFormat)) {
+            if (requestedFormat !== "image/png") {
+              showToast("当前浏览器不支持导出该格式，已自动回退为 PNG");
+              selectFormatUI("image/png");
+              generateOutputBlob();
+            } else {
+              showToast("编码失败：输出尺寸过大或内存不足，请降低目标尺寸");
+              setEncodePending(false);
+            }
+            return;
+          }
+
+          let finalBlob = rawBlob;
+          readExifFromInputs();
+
+          try {
+            // Inject or strip binary EXIF metadata (JPEG APP1 / PNG eXIf / WebP RIFF EXIF chunk)
+            if (requestedFormat === "image/jpeg") {
+              const buf = await rawBlob.arrayBuffer();
+              const processed = ExifEngine.processJpegBytes(new Uint8Array(buf), state.stripExif, state.exif);
+              finalBlob = new Blob([processed], { type: "image/jpeg" });
+            } else if (requestedFormat === "image/png") {
+              const buf = await rawBlob.arrayBuffer();
+              const processed = ExifEngine.injectPngExif(new Uint8Array(buf), state.stripExif, state.exif);
+              finalBlob = new Blob([processed], { type: "image/png" });
+            } else if (requestedFormat === "image/webp") {
+              const buf = await rawBlob.arrayBuffer();
+              const processed = ExifEngine.injectWebpExif(new Uint8Array(buf), state.stripExif, state.exif, outW, outH);
+              finalBlob = new Blob([processed], { type: "image/webp" });
+            }
+          } catch (err) {
+            console.warn("EXIF 写入失败，已输出不含元数据的文件", err);
+          }
+
+          if (seq !== encodeSeq) return;
+          finalizeOutputBlob(finalBlob, outW, outH);
+        }, requestedFormat, quality);
+      }
+
+      function finalizeOutputBlob(blob, outW, outH) {
+        if (state.outputUrl) {
+          URL.revokeObjectURL(state.outputUrl);
+        }
+        state.outputBlob = blob;
+        state.outputUrl = URL.createObjectURL(blob);
+        setEncodePending(false);
+
+        const fmtExtMap = {
+          "image/jpeg": "JPEG",
+          "image/png": "PNG",
+          "image/webp": "WebP",
+          "image/bmp": "BMP",
+          "image/avif": "AVIF"
+        };
+        const fmtName = fmtExtMap[state.outputFormat] || "IMG";
+        const modeText = state.compressionMode === "lossless"
+          ? "无损"
+          : `有损 ${100 - state.compressionRate}%画质`;
+
+        els.exportSpecSummary.textContent = `${outW}×${outH} · ${fmtName} (${modeText})`;
+        els.estimatedSizeLabel.textContent = formatBytes(blob.size);
+
+        if (state.originalBytes > 0) {
+          const diffPct = ((blob.size - state.originalBytes) / state.originalBytes) * 100;
+          if (diffPct <= 0) {
+            els.sizeDeltaPill.textContent = `节省 ${Math.abs(diffPct).toFixed(1)}%`;
+            els.sizeDeltaPill.classList.remove("increase");
+          } else {
+            els.sizeDeltaPill.textContent = `+${diffPct.toFixed(1)}%`;
+            els.sizeDeltaPill.classList.add("increase");
+          }
+        }
+
+        if (state.compareMode) {
+          renderCompareView();
+        }
+      }
+
+      /* ======================================================================
+         MODULE 9: BEFORE / AFTER VISUAL SPLIT COMPARISON
+         ====================================================================== */
+      function renderCompareView() {
+        if (!state.compareMode || !state.outputUrl) return;
+
+        // Stage is re-fitted to the OUTPUT aspect ratio and the "before" (cropped source) half is painted
+        renderStageCanvas();
+
+        const dispW = els.canvasStageInner.clientWidth;
+        const dispH = els.canvasStageInner.clientHeight;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        // Decode the actual encoded output so the "after" half shows true compression artifacts
+        const url = state.outputUrl;
+        const img = new Image();
+        img.onload = () => {
+          if (url !== state.outputUrl || !state.compareMode) return; // Superseded or mode left
+          els.compareAfterCanvas.width = Math.round(dispW * dpr);
+          els.compareAfterCanvas.height = Math.round(dispH * dpr);
+          const aCtx = els.compareAfterCanvas.getContext("2d");
+          aCtx.clearRect(0, 0, els.compareAfterCanvas.width, els.compareAfterCanvas.height);
+          aCtx.drawImage(img, 0, 0, els.compareAfterCanvas.width, els.compareAfterCanvas.height);
+          updateCompareClip();
+        };
+        img.src = url;
+
+        const modeStr = state.compressionMode === "lossless" ? "无损输出" : `压缩率 ${state.compressionRate}%`;
+        els.compareRightLabel.textContent = `${modeStr} (${formatBytes(state.outputBlob.size)})`;
+      }
+
+      function updateCompareClip() {
+        const pct = Math.max(2, Math.min(98, state.compareSplit * 100));
+        els.compareDivider.style.left = `${pct}%`;
+        els.compareAfterCanvas.style.clipPath = `inset(0 0 0 ${pct}%)`;
+      }
+
+      let compareDragPointer = null;
+      els.compareDivider.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        compareDragPointer = e.pointerId;
+        els.compareDivider.setPointerCapture(e.pointerId);
+      });
+      window.addEventListener("pointermove", (e) => {
+        if (compareDragPointer === null || e.pointerId !== compareDragPointer) return;
+        const rect = els.canvasStageInner.getBoundingClientRect();
+        state.compareSplit = (e.clientX - rect.left) / Math.max(1, rect.width);
+        updateCompareClip();
+      });
+      const endCompareDrag = (e) => {
+        if (e.pointerId === compareDragPointer) compareDragPointer = null;
+      };
+      window.addEventListener("pointerup", endCompareDrag);
+      window.addEventListener("pointercancel", endCompareDrag);
+
+      /* ======================================================================
+         MODULE 10: EXIF FORM SYNC HELPERS
+         ====================================================================== */
+      function syncExifToInputs() {
+        els.chkStripExif.checked = state.stripExif;
+        els.exifFormFields.style.opacity = state.stripExif ? "0.45" : "1";
+        els.exifFormFields.style.pointerEvents = state.stripExif ? "none" : "auto";
+
+        els.exifMake.value = state.exif.make;
+        els.exifModel.value = state.exif.model;
+        els.exifArtist.value = state.exif.artist;
+        els.exifSoftware.value = state.exif.software;
+        els.exifDateTime.value = state.exif.dateTime;
+        els.exifCopyright.value = state.exif.copyright;
+        els.exifDescription.value = state.exif.description;
+        els.exifFNumber.value = state.exif.fNumber;
+        els.exifExposure.value = state.exif.exposureTime;
+        els.exifIso.value = state.exif.iso;
+        els.exifFocal.value = state.exif.focalLength;
+        els.exifGpsLat.value = state.exif.gpsLat;
+        els.exifGpsLng.value = state.exif.gpsLng;
+      }
+
+      function readExifFromInputs() {
+        state.stripExif = els.chkStripExif.checked;
+        state.exif.make = els.exifMake.value;
+        state.exif.model = els.exifModel.value;
+        state.exif.artist = els.exifArtist.value;
+        state.exif.software = els.exifSoftware.value;
+        state.exif.dateTime = els.exifDateTime.value;
+        state.exif.copyright = els.exifCopyright.value;
+        state.exif.description = els.exifDescription.value;
+        state.exif.fNumber = els.exifFNumber.value;
+        state.exif.exposureTime = els.exifExposure.value;
+        state.exif.iso = els.exifIso.value;
+        state.exif.focalLength = els.exifFocal.value;
+        state.exif.gpsLat = els.exifGpsLat.value;
+        state.exif.gpsLng = els.exifGpsLng.value;
+      }
+
+      /* ======================================================================
+         MODULE 11: UI EVENT LISTENERS & NAVIGATION BINDING
+         ====================================================================== */
+      function bindEvents() {
+        // 1. Theme & Material You Seed Switcher (persisted; follows system until the user overrides)
+        const PREF_KEY = "pixelstudio.prefs";
+        const readPrefs = () => {
+          try { return JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); } catch { return {}; }
+        };
+        const writePrefs = (patch) => {
+          try { localStorage.setItem(PREF_KEY, JSON.stringify({ ...readPrefs(), ...patch })); } catch { /* private mode */ }
+        };
+        const SEED_HEX = { teal: "#006A67", violet: "#6750A4", azure: "#1B60A5", forest: "#296A47", terracotta: "#984716" };
+        const darkMql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+        function applyTheme(isDark) {
+          if (isDark) document.documentElement.setAttribute("data-theme", "dark");
+          else document.documentElement.removeAttribute("data-theme");
+          $("iconMoon").style.display = isDark ? "none" : "block";
+          $("iconSun").style.display = isDark ? "block" : "none";
+          syncThemeColorMeta();
+        }
+
+        function applySeed(seed) {
+          if (seed === "teal") document.documentElement.removeAttribute("data-seed");
+          else document.documentElement.setAttribute("data-seed", seed);
+          document.querySelectorAll(".seed-dot").forEach((d) => d.classList.toggle("active", d.dataset.seed === seed));
+          syncThemeColorMeta();
+        }
+
+        // Keep the browser chrome (Android address bar / PWA title bar) in tune with the surface color
+        function syncThemeColorMeta() {
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (!meta) return;
+          const surface = getComputedStyle(document.documentElement).getPropertyValue("--md-sys-color-surface").trim();
+          meta.setAttribute("content", surface || SEED_HEX.teal);
+        }
+
+        const prefs = readPrefs();
+        applyTheme(typeof prefs.dark === "boolean" ? prefs.dark : Boolean(darkMql && darkMql.matches));
+        if (prefs.seed && SEED_HEX[prefs.seed]) applySeed(prefs.seed);
+
+        // React to OS theme changes while the user has not chosen manually
+        if (darkMql && typeof darkMql.addEventListener === "function") {
+          darkMql.addEventListener("change", (e) => {
+            if (typeof readPrefs().dark !== "boolean") applyTheme(e.matches);
+          });
+        }
+
+        $("btnThemeToggle").addEventListener("click", () => {
+          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+          applyTheme(!isDark);
+          writePrefs({ dark: !isDark });
+        });
+
+        const seedPicker = $("seedPicker");
+        const btnSeedMobile = $("btnSeedMobile");
+
+        function seedPickerClose() {
+          seedPicker.classList.remove("open");
+          btnSeedMobile.classList.remove("active");
+          btnSeedMobile.setAttribute("aria-expanded", "false");
+        }
+
+        // Mobile palette popup toggle
+        btnSeedMobile.setAttribute("aria-expanded", "false");
+        btnSeedMobile.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const open = !seedPicker.classList.contains("open");
+          seedPicker.classList.toggle("open", open);
+          btnSeedMobile.classList.toggle("active", open);
+          btnSeedMobile.setAttribute("aria-expanded", String(open));
+        });
+
+        // Close the popup when tapping anywhere outside it, or pressing Escape
+        document.addEventListener("click", (e) => {
+          if (seedPicker.classList.contains("open") && !seedPicker.contains(e.target) && !btnSeedMobile.contains(e.target)) {
+            seedPickerClose();
+          }
+        });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && seedPicker.classList.contains("open")) seedPickerClose();
+        });
+
+        document.querySelectorAll(".seed-dot").forEach((dot) => {
+          dot.addEventListener("click", () => {
+            applySeed(dot.dataset.seed);
+            writePrefs({ seed: dot.dataset.seed });
+            // Auto-close the popup after choosing a color on narrow viewports
+            if (window.innerWidth < 768) seedPickerClose();
+          });
+        });
+
+        // 2. Navigation Rail / Bottom Bar Tabs
+        document.querySelectorAll(".nav-item").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const tab = btn.dataset.tab;
+            state.activeTab = tab;
+
+            document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b === btn));
+
+            // On Desktop (>= 768px), keep export card always visible alongside active tool
+            const isMobile = window.innerWidth < 768;
+            document.querySelectorAll(".tool-panel").forEach((panel) => {
+              if (panel.id === "panel-export") {
+                if (isMobile) {
+                  panel.classList.toggle("mobile-active", tab === "export");
+                  panel.classList.toggle("active", tab === "export");
+                } else {
+                  panel.classList.add("active");
+                }
+              } else {
+                panel.classList.toggle("active", panel.id === `panel-${tab}`);
+              }
+            });
+
+            if (!isMobile && tab === "export") {
+              $("panel-export").scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+          });
+        });
+
+        // 3. File Upload, Drag & Drop, Paste & Demo
+        $("btnSelectFile").addEventListener("click", () => els.fileInput.click());
+        $("btnReplaceFileTop").addEventListener("click", () => els.fileInput.click());
+        $("btnLoadDemo").addEventListener("click", loadDemoImage);
+
+        els.fileInput.addEventListener("change", (e) => {
+          if (e.target.files && e.target.files[0]) {
+            loadImageFromFile(e.target.files[0]);
+            e.target.value = "";
+          }
+        });
+
+        window.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          els.dropzoneCard.classList.add("drag-over");
+        });
+        window.addEventListener("dragleave", (e) => {
+          if (e.relatedTarget === null) {
+            els.dropzoneCard.classList.remove("drag-over");
+          }
+        });
+        window.addEventListener("drop", (e) => {
+          e.preventDefault();
+          els.dropzoneCard.classList.remove("drag-over");
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            loadImageFromFile(e.dataTransfer.files[0]);
+          }
+        });
+
+        window.addEventListener("paste", (e) => {
+          const items = e.clipboardData && e.clipboardData.items;
+          if (!items) return;
+          for (const item of items) {
+            if (item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) {
+                loadImageFromFile(file);
+                showToast("已从剪贴板粘贴图片");
+                break;
+              }
+            }
+          }
+        });
+
+        // 4. Stage Rotate / Flip / Reset / Compare
+        $("btnRotateLeft").addEventListener("click", () => {
+          state.rotation = (state.rotation + 270) % 360;
+          rebuildTransformedSource(false);
+        });
+        $("btnRotateRight").addEventListener("click", () => {
+          state.rotation = (state.rotation + 90) % 360;
+          rebuildTransformedSource(false);
+        });
+        $("btnFlipH").addEventListener("click", () => {
+          state.flipH = !state.flipH;
+          rebuildTransformedSource(false);
+        });
+        $("btnFlipV").addEventListener("click", () => {
+          state.flipV = !state.flipV;
+          rebuildTransformedSource(false);
+        });
+        $("btnResetAll").addEventListener("click", () => {
+          state.rotation = 0;
+          state.flipH = false;
+          state.flipV = false;
+          state.cropRatio = "free";
+          document.querySelectorAll("#cropRatioChips .m3-chip").forEach((ch) => {
+            ch.classList.toggle("active", ch.dataset.ratio === "free");
+          });
+          rebuildTransformedSource(true);
+          showToast("已重置裁剪、旋转与尺寸修改");
+        });
+
+        els.btnToggleCompareTop.addEventListener("click", () => {
+          state.compareMode = !state.compareMode;
+          els.btnToggleCompareTop.classList.toggle("btn-filled", state.compareMode);
+          els.btnToggleCompareTop.classList.toggle("btn-tonal", !state.compareMode);
+          els.compareOverlay.classList.toggle("visible", state.compareMode);
+          if (state.compareMode) {
+            els.cropOverlay.classList.remove("visible");
+            renderCompareView();
+            showToast("拖动中线可实时对比原图与压缩输出");
+          } else {
+            renderStageCanvas();
+          }
+        });
+
+        // 5. Crop Controls
+        document.querySelectorAll("#cropRatioChips .m3-chip").forEach((chip) => {
+          chip.addEventListener("click", () => {
+            document.querySelectorAll("#cropRatioChips .m3-chip").forEach((c) => c.classList.remove("active"));
+            chip.classList.add("active");
+            applyAspectRatioPreset(chip.dataset.ratio);
+          });
+        });
+
+        const handleNumericCropChange = () => {
+          if (!state.hasImage) return;
+          let x = Math.max(0, parseInt(els.inpCropX.value, 10) || 0);
+          let y = Math.max(0, parseInt(els.inpCropY.value, 10) || 0);
+          let w = Math.max(16, parseInt(els.inpCropW.value, 10) || 16);
+          let h = Math.max(16, parseInt(els.inpCropH.value, 10) || 16);
+
+          if (x + w > state.rotW) w = Math.max(16, state.rotW - x);
+          if (y + h > state.rotH) h = Math.max(16, state.rotH - y);
+          if (x >= state.rotW) x = state.rotW - 16;
+          if (y >= state.rotH) y = state.rotH - 16;
+
+          state.cropX = x;
+          state.cropY = y;
+          state.cropW = w;
+          state.cropH = h;
+          syncCropInputs();
+          const currentScale = parseFloat(els.sliderScalePercent.value) / 100 || 1;
+          syncResizeFromCrop(currentScale);
+          updateCropBoxVisual();
+          scheduleOutputEncode();
+        };
+
+        [els.inpCropX, els.inpCropY, els.inpCropW, els.inpCropH].forEach((inp) => {
+          inp.addEventListener("change", handleNumericCropChange);
+        });
+
+        $("btnCenterCrop").addEventListener("click", () => {
+          if (!state.hasImage) return;
+          state.cropX = Math.round((state.rotW - state.cropW) / 2);
+          state.cropY = Math.round((state.rotH - state.cropH) / 2);
+          syncCropInputs();
+          updateCropBoxVisual();
+          scheduleOutputEncode();
+        });
+
+        $("btnResetCrop").addEventListener("click", () => {
+          if (!state.hasImage) return;
+          state.cropX = 0;
+          state.cropY = 0;
+          state.cropW = state.rotW;
+          state.cropH = state.rotH;
+          syncCropInputs();
+          syncResizeFromCrop(1);
+          updateCropBoxVisual();
+          scheduleOutputEncode();
+        });
+
+        $("btnToggleCropOverlay").addEventListener("click", () => {
+          state.showCropOverlay = !state.showCropOverlay;
+          updateCropBoxVisual();
+        });
+
+        // 6. Resize Controls
+        els.btnLockAspect.addEventListener("click", () => {
+          state.lockAspect = !state.lockAspect;
+          els.btnLockAspect.classList.toggle("active", state.lockAspect);
+          els.iconLockClosed.style.display = state.lockAspect ? "block" : "none";
+          els.iconLockOpen.style.display = state.lockAspect ? "none" : "block";
+        });
+
+        // Highlight the preset chip that matches the current scale / width (if any)
+        const syncResizePresetChips = () => {
+          const scale = state.targetW / Math.max(1, state.cropW);
+          document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => {
+            let match = false;
+            if (c.dataset.scale) match = Math.abs(parseFloat(c.dataset.scale) - scale) < 0.005;
+            else if (c.dataset.maxw) match = parseInt(c.dataset.maxw, 10) === Math.round(state.targetW);
+            c.classList.toggle("active", match);
+          });
+        };
+
+        const afterManualResize = () => {
+          const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
+          els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
+          els.scalePercentBadge.textContent = `${pct}%`;
+          syncResizePresetChips();
+          scheduleOutputEncode();
+        };
+
+        els.inpResizeW.addEventListener("input", () => {
+          const raw = parseInt(els.inpResizeW.value, 10);
+          if (!Number.isFinite(raw)) return; // Field temporarily empty while typing
+          const w = Math.max(1, Math.min(16384, raw));
+          state.targetW = w;
+          if (state.lockAspect && state.cropW > 0) {
+            state.targetH = Math.max(1, Math.round(w * (state.cropH / state.cropW)));
+            els.inpResizeH.value = state.targetH;
+          }
+          afterManualResize();
+        });
+
+        els.inpResizeH.addEventListener("input", () => {
+          const raw = parseInt(els.inpResizeH.value, 10);
+          if (!Number.isFinite(raw)) return;
+          const h = Math.max(1, Math.min(16384, raw));
+          state.targetH = h;
+          if (state.lockAspect && state.cropH > 0) {
+            state.targetW = Math.max(1, Math.round(h * (state.cropW / state.cropH)));
+            els.inpResizeW.value = state.targetW;
+          }
+          afterManualResize();
+        });
+
+        // Normalize out-of-range / empty values once editing is finished
+        [els.inpResizeW, els.inpResizeH].forEach((inp) => {
+          inp.addEventListener("change", () => {
+            els.inpResizeW.value = Math.round(state.targetW);
+            els.inpResizeH.value = Math.round(state.targetH);
+          });
+        });
+
+        els.sliderScalePercent.addEventListener("input", () => {
+          const pct = parseInt(els.sliderScalePercent.value, 10) || 100;
+          els.scalePercentBadge.textContent = `${pct}%`;
+          syncResizeFromCrop(pct / 100);
+          scheduleOutputEncode();
+        });
+
+        document.querySelectorAll("#resizePresetChips .m3-chip").forEach((chip) => {
+          chip.addEventListener("click", () => {
+            if (!state.hasImage) return;
+            document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => c.classList.remove("active"));
+            chip.classList.add("active");
+            if (chip.dataset.scale) {
+              const s = parseFloat(chip.dataset.scale);
+              syncResizeFromCrop(s);
+            } else if (chip.dataset.maxw) {
+              const targetW = parseInt(chip.dataset.maxw, 10);
+              const s = targetW / Math.max(1, state.cropW);
+              syncResizeFromCrop(s);
+            }
+            scheduleOutputEncode();
+          });
+        });
+
+        $("btnResetResize").addEventListener("click", () => {
+          if (!state.hasImage) return;
+          syncResizeFromCrop(1);
+          scheduleOutputEncode();
+        });
+
+        els.selResample.addEventListener("change", () => {
+          state.resampleQuality = els.selResample.value;
+          scheduleOutputEncode();
+        });
+
+        // 7. EXIF Controls
+        els.chkStripExif.addEventListener("change", () => {
+          state.stripExif = els.chkStripExif.checked;
+          els.exifFormFields.style.opacity = state.stripExif ? "0.45" : "1";
+          els.exifFormFields.style.pointerEvents = state.stripExif ? "none" : "auto";
+          scheduleOutputEncode();
+        });
+
+        $("btnFillSampleExif").addEventListener("click", () => {
+          state.stripExif = false;
+          state.exif = {
+            make: "Apple",
+            model: "iPhone 16 Pro Max",
+            artist: "PixelStudio Creator",
+            software: "PixelStudio H5",
+            dateTime: getNowExifDate(),
+            copyright: "© 2025 PixelStudio",
+            description: "Edited with PixelStudio Material You",
+            fNumber: "1.78",
+            exposureTime: "0.004",
+            iso: "80",
+            focalLength: "24",
+            gpsLat: "39.904200",
+            gpsLng: "116.407396"
+          };
+          syncExifToInputs();
+          scheduleOutputEncode();
+          showToast("已填入示例 EXIF 相机与 GPS 参数");
+        });
+
+        $("btnClearGpsOnly").addEventListener("click", () => {
+          els.exifGpsLat.value = "";
+          els.exifGpsLng.value = "";
+          readExifFromInputs();
+          scheduleOutputEncode();
+          showToast("已清除 GPS 经纬度坐标");
+        });
+
+        [
+          els.exifMake, els.exifModel, els.exifArtist, els.exifSoftware,
+          els.exifDateTime, els.exifCopyright, els.exifDescription,
+          els.exifFNumber, els.exifExposure, els.exifIso, els.exifFocal,
+          els.exifGpsLat, els.exifGpsLng
+        ].forEach((inp) => {
+          inp.addEventListener("change", () => {
+            readExifFromInputs();
+            scheduleOutputEncode();
+          });
+        });
+
+        // 8. Format & Lossy/Lossless Compression Controls
+        // Detect browser AVIF encoding support dynamically
+        const testAvif = document.createElement("canvas");
+        testAvif.width = 2; testAvif.height = 2;
+        testAvif.toBlob((b) => {
+          if (b && b.type === "image/avif") {
+            $("btnFormatAvif").style.display = "flex";
+          }
+        }, "image/avif");
+
+        document.querySelectorAll("#formatSegmented .segmented-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            document.querySelectorAll("#formatSegmented .segmented-btn").forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            state.outputFormat = btn.dataset.format;
+
+            // Show background matte picker for formats without transparency
+            const needsMatte = state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp";
+            els.jpegMatteRow.style.display = needsMatte ? "flex" : "none";
+
+            // BMP is strictly lossless
+            if (state.outputFormat === "image/bmp") {
+              setCompressionMode("lossless");
+            }
+            updateCompressionBannerText();
+            scheduleOutputEncode();
+          });
+        });
+
+        document.querySelectorAll(".matte-swatch").forEach((sw) => {
+          sw.addEventListener("click", () => {
+            document.querySelectorAll(".matte-swatch").forEach((s) => s.classList.remove("active"));
+            sw.classList.add("active");
+            state.matteColor = sw.dataset.matte;
+            els.inpMatteColor.value = state.matteColor;
+            scheduleOutputEncode();
+          });
+        });
+
+        els.inpMatteColor.addEventListener("input", () => {
+          document.querySelectorAll(".matte-swatch").forEach((s) => s.classList.remove("active"));
+          state.matteColor = els.inpMatteColor.value;
+          scheduleOutputEncode();
+        });
+
+        function setCompressionMode(mode) {
+          state.compressionMode = mode;
+          document.querySelectorAll("#compressionModeSegmented .segmented-btn").forEach((b) => {
+            b.classList.toggle("active", b.dataset.mode === mode);
+          });
+          els.lossyControlsBlock.style.display = mode === "lossy" ? "flex" : "none";
+          els.losslessBanner.style.display = mode === "lossless" ? "flex" : "none";
+          updateCompressionBannerText();
+        }
+
+        function updateCompressionBannerText() {
+          if (state.compressionMode !== "lossless") return;
+          if (state.outputFormat === "image/png" || state.outputFormat === "image/bmp" || state.outputFormat === "image/webp") {
+            els.losslessBanner.classList.remove("warning");
+            els.losslessBannerText.textContent = "当前为无损压缩模式：逐像素完整保留原始色彩与透明度信息，零画质损失。";
+          } else {
+            els.losslessBanner.classList.add("warning");
+            els.losslessBannerText.textContent = "JPEG 格式本身基于 DCT 变换，已为您锁定 100% 最高保真参数；如需数学意义上的绝对无损，建议切换为 PNG 或 WebP 格式。";
+          }
+        }
+
+        document.querySelectorAll("#compressionModeSegmented .segmented-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            if (state.outputFormat === "image/bmp" && btn.dataset.mode === "lossy") {
+              showToast("BMP 格式仅支持无损导出，如需有损压缩请选择 JPEG / WebP");
+              return;
+            }
+            setCompressionMode(btn.dataset.mode);
+            scheduleOutputEncode();
+          });
+        });
+
+        function updateCompressionRate(rate) {
+          const clamped = Math.max(1, Math.min(99, Math.round(rate)));
+          state.compressionRate = clamped;
+          els.sliderCompression.value = Math.min(95, clamped);
+          els.inpCompressionExact.value = clamped;
+          els.compressionRateLabel.textContent = `压缩 ${clamped}% · 画质 ${100 - clamped}%`;
+          document.querySelectorAll("#compressionPresets .m3-chip").forEach((c) => {
+            c.classList.toggle("active", parseInt(c.dataset.comp, 10) === clamped);
+          });
+          scheduleOutputEncode();
+        }
+
+        els.sliderCompression.addEventListener("input", () => {
+          updateCompressionRate(parseInt(els.sliderCompression.value, 10));
+        });
+
+        els.inpCompressionExact.addEventListener("change", () => {
+          updateCompressionRate(parseInt(els.inpCompressionExact.value, 10) || 20);
+        });
+
+        document.querySelectorAll("#compressionPresets .m3-chip").forEach((chip) => {
+          chip.addEventListener("click", () => {
+            updateCompressionRate(parseInt(chip.dataset.comp, 10));
+          });
+        });
+
+        // 9. Export & Download Action
+        els.btnDownloadExport.addEventListener("click", () => {
+          if (!state.outputBlob) return;
+          const extMap = {
+            "image/jpeg": "jpg",
+            "image/png": "png",
+            "image/webp": "webp",
+            "image/bmp": "bmp",
+            "image/avif": "avif"
+          };
+          const ext = extMap[state.outputFormat] || "jpg";
+          const cleanName = (els.inpOutputFilename.value.trim() || "pixelstudio_output").replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, "_");
+          const fullFilename = `${cleanName}.${ext}`;
+
+          const link = document.createElement("a");
+          link.href = state.outputUrl;
+          link.download = fullFilename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          showToast(`已成功导出 ${fullFilename} (${formatBytes(state.outputBlob.size)})`);
+        });
+
+        // 10. Responsive ResizeObserver on Stage Viewport
+        let roFrame = 0;
+        const ro = new ResizeObserver(() => {
+          // Coalesce bursts of resize notifications into one paint per animation frame
+          cancelAnimationFrame(roFrame);
+          roFrame = requestAnimationFrame(() => {
+            if (state.hasImage) {
+              if (state.compareMode) renderCompareView(); // Already re-fits & paints the stage
+              else renderStageCanvas();
+            }
+          });
+          // Sync desktop/mobile panel state on viewport resize
+          const isMobile = window.innerWidth < 768;
+          const exportPanel = $("panel-export");
+          if (!isMobile) {
+            exportPanel.classList.add("active");
+            // On desktop the seed dots are inline again, close any mobile popup
+            seedPickerClose();
+          } else {
+            exportPanel.classList.toggle("active", state.activeTab === "export");
+            exportPanel.classList.toggle("mobile-active", state.activeTab === "export");
+          }
+        });
+        ro.observe(els.canvasViewport);
+      }
+
+      // Initialize application
+      bindEvents();
+    })();
+  </script>
+</body>
+</html>
