@@ -2966,6 +2966,7 @@
         matteColor: "#ffffff",
         compressionMode: "lossy", // 'lossy' | 'lossless'
         compressionRate: 20,      // 1..95% (quality = 100 - compressionRate)
+        modeBeforeBmp: null,      // Compression mode to restore when leaving BMP
 
         // Live Output Cache
         outputBlob: null,
@@ -3221,7 +3222,7 @@
 
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 36px system-ui, sans-serif";
-        ctx.fillText("PIXEL STUDIO · 4K TEST", 116, 152);
+        ctx.fillText("PIXEL STUDIO · DEMO", 116, 152);
         ctx.font = "500 20px system-ui, sans-serif";
         ctx.fillStyle = "rgba(255,255,255,0.88)";
         ctx.fillText("1600 × 1066 px · 色彩过渡与边缘锐度测试样本", 116, 194);
@@ -4229,6 +4230,7 @@
           rebuildTransformedSource(false);
         });
         $("btnResetAll").addEventListener("click", () => {
+          if (!state.hasImage) return;
           state.rotation = 0;
           state.flipH = false;
           state.flipV = false;
