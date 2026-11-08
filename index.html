@@ -2911,7 +2911,9 @@
         fileName: "sample.jpg",
         originalBytes: 0,
         originalMime: "image/jpeg",
-        sourceImg: null,        // Original HTMLImageElement
+        sourceImg: null,        // Original HTMLImageElement (or downscaled canvas for extreme inputs)
+        sourceW: 0,
+        sourceH: 0,
         transformedCanvas: null, // Source after rotation/flip
         rotW: 0,
         rotH: 0,
@@ -3724,14 +3726,6 @@
         els.estimatedSizeLabel.classList.toggle("pending", pending);
         els.btnDownloadExport.disabled = pending || !state.hasImage || !state.outputBlob;
         els.btnDownloadText.textContent = pending ? "编码中…" : "导出保存图片";
-      }
-
-      function selectFormatUI(mime) {
-        state.outputFormat = mime;
-        document.querySelectorAll("#formatSegmented .segmented-btn").forEach((b) => {
-          b.classList.toggle("active", b.dataset.format === mime);
-        });
-        els.jpegMatteRow.style.display = (mime === "image/jpeg" || mime === "image/bmp") ? "flex" : "none";
       }
 
       function generateOutputBlob() {
