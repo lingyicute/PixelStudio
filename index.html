@@ -3708,9 +3708,18 @@
         }, 140);
       }
 
+      // Drop the last encoded result so a failed encode can never export a stale file
+      function clearOutput() {
+        if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
+        state.outputUrl = null;
+        state.outputBlob = null;
+        els.estimatedSizeLabel.textContent = "-- KB";
+        els.sizeDeltaPill.textContent = "编码失败";
+      }
+
       function setEncodePending(pending) {
         els.estimatedSizeLabel.classList.toggle("pending", pending);
-        els.btnDownloadExport.disabled = pending || !state.hasImage;
+        els.btnDownloadExport.disabled = pending || !state.hasImage || !state.outputBlob;
         els.btnDownloadText.textContent = pending ? "编码中…" : "导出保存图片";
       }
 
@@ -3731,6 +3740,7 @@
 
         if (outW * outH > MAX_CANVAS_PIXELS || outW > 16384 || outH > 16384) {
           showToast(`目标尺寸 ${outW}×${outH} 超出浏览器画布上限，请降低输出尺寸`);
+          clearOutput();
           setEncodePending(false);
           return;
         }
@@ -3741,6 +3751,7 @@
         const ctx = outCanvas.getContext("2d");
         if (!ctx) {
           showToast("无法创建画布，可能是内存不足");
+          clearOutput();
           setEncodePending(false);
           return;
         }
@@ -3800,6 +3811,7 @@
               generateOutputBlob();
             } else {
               showToast("编码失败：输出尺寸过大或内存不足，请降低目标尺寸");
+              clearOutput();
               setEncodePending(false);
             }
             return;
