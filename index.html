@@ -4485,7 +4485,9 @@
             els.losslessBannerText.textContent = "当前为无损压缩模式：逐像素完整保留原始色彩与透明度信息，零画质损失。";
           } else {
             els.losslessBanner.classList.add("warning");
-            els.losslessBannerText.textContent = "JPEG 格式本身基于 DCT 变换，已为您锁定 100% 最高保真参数；如需数学意义上的绝对无损，建议切换为 PNG 或 WebP 格式。";
+            els.losslessBannerText.textContent = state.outputFormat === "image/avif"
+              ? "浏览器的 AVIF 编码器无法保证数学意义上的无损，已按最高画质导出；如需绝对无损，建议切换为 PNG 或 WebP 格式。"
+              : "JPEG 格式本身基于 DCT 变换，已为您锁定 100% 最高保真参数；如需数学意义上的绝对无损，建议切换为 PNG 或 WebP 格式。";
           }
         }
 
