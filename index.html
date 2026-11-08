@@ -3115,6 +3115,8 @@
         return { source: c, w: nw, h: nh, downscaled: true };
       }
 
+      let loadToken = 0; // Only the most recently requested image may initialise the workspace
+
       async function loadImageFromFile(file) {
         const looksLikeImage = file && (
           (file.type && file.type.startsWith("image/")) ||
@@ -3124,8 +3126,10 @@
           showToast("请选择有效的图片文件 (JPEG / PNG / WebP / BMP / GIF)");
           return;
         }
+        const token = ++loadToken;
         try {
           const arrayBuffer = await file.arrayBuffer();
+          if (token !== loadToken) return;
           let parsedExif;
           try {
             parsedExif = ExifEngine.parse(arrayBuffer);
@@ -3139,6 +3143,7 @@
           const img = new Image();
           img.onload = () => {
             URL.revokeObjectURL(blobUrl);
+            if (token !== loadToken) return;
             if (!img.naturalWidth || !img.naturalHeight) {
               showToast("无法获取图片尺寸（可能是无固有尺寸的 SVG），请换一张图片");
               return;
@@ -3152,6 +3157,7 @@
           };
           img.onerror = () => {
             URL.revokeObjectURL(blobUrl);
+            if (token !== loadToken) return;
             showToast("图片解码失败，请尝试其他图片格式");
           };
           img.src = blobUrl;
@@ -3223,11 +3229,21 @@
         ctx.fillStyle = "#9cf1ed";
         ctx.fillText("f/1.8  ·  1/250s  ·  ISO 100  ·  24mm", 116, 238);
 
+        const token = ++loadToken;
         c.toBlob((blob) => {
+          if (!blob) {
+            showToast("无法生成示例图片，请改为选择本地图片");
+            return;
+          }
           const url = URL.createObjectURL(blob);
           const img = new Image();
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            if (token === loadToken) showToast("示例图片解码失败");
+          };
           img.onload = () => {
             URL.revokeObjectURL(url);
+            if (token !== loadToken) return;
             initWorkspaceWithImage(img, {
               fileName: "alpine_sunset_demo.jpg",
               fileSize: blob.size,
@@ -4135,7 +4151,10 @@
           }
         });
 
+        // Only react to file drags so text can still be dragged into the EXIF inputs
+        const hasFiles = (e) => Boolean(e.dataTransfer) && Array.from(e.dataTransfer.types || []).includes("Files");
         window.addEventListener("dragover", (e) => {
+          if (!hasFiles(e)) return;
           e.preventDefault();
           els.dropzoneCard.classList.add("drag-over");
         });
@@ -4145,6 +4164,7 @@
           }
         });
         window.addEventListener("drop", (e) => {
+          if (!hasFiles(e)) return;
           e.preventDefault();
           els.dropzoneCard.classList.remove("drag-over");
           if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
