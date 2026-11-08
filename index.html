@@ -3709,9 +3709,20 @@
       function scheduleOutputEncode() {
         if (!state.hasImage) return;
         clearTimeout(encodeTimer);
+        // Invalidate any encode still in flight, otherwise its late result would re-enable
+        // the export button with a stale file while the new encode is only pending
+        encodeSeq++;
         setEncodePending(true);
         encodeTimer = setTimeout(() => {
-          generateOutputBlob();
+          try {
+            generateOutputBlob();
+          } catch (err) {
+            // e.g. out-of-memory in getImageData; never leave the UI stuck on "编码中…"
+            console.error(err);
+            showToast("编码失败：" + ((err && err.message) || "内存不足，请降低目标尺寸"));
+            clearOutput();
+            setEncodePending(false);
+          }
         }, 140);
       }
 
