@@ -2298,6 +2298,23 @@
               offset += 12 + length;
             }
           }
+          // Check WebP: RIFF....WEBP, EXIF chunk
+          else if (view.byteLength >= 20 && view.getUint32(0, false) === 0x52494646 && view.getUint32(8, false) === 0x57454250) {
+            let offset = 12;
+            while (offset + 8 <= view.byteLength) {
+              const type = view.getUint32(offset, false);
+              const size = view.getUint32(offset + 4, true);
+              if (offset + 8 + size > view.byteLength) break;
+              if (type === 0x45584946) { // 'EXIF'
+                let start = offset + 8;
+                // Some writers prefix the payload with "Exif\0\0"
+                if (size >= 6 && view.getUint32(start, false) === 0x45786966 && view.getUint16(start + 4, false) === 0) start += 6;
+                this._parseTiff(view, start, size - (start - (offset + 8)), result);
+                result.hasExif = true;
+              }
+              offset += 8 + size + (size & 1);
+            }
+          }
           return result;
         },
 
@@ -3099,7 +3116,14 @@
         }
         try {
           const arrayBuffer = await file.arrayBuffer();
-          const parsedExif = ExifEngine.parse(arrayBuffer);
+          let parsedExif;
+          try {
+            parsedExif = ExifEngine.parse(arrayBuffer);
+          } catch (parseErr) {
+            // A malformed EXIF block must never prevent the image itself from loading
+            console.warn("EXIF 解析失败，已忽略", parseErr);
+            parsedExif = ExifEngine.parse(new ArrayBuffer(0));
+          }
           const blobUrl = URL.createObjectURL(file);
 
           const img = new Image();
