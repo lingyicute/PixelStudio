@@ -2421,6 +2421,18 @@
           return den === 0 ? 0 : num / den;
         },
 
+        // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants, drop anything unparsable
+        normalizeDate(raw) {
+          const s = (raw || "").trim();
+          if (!s) return "";
+          const m = s.match(/^(\d{4})[-:/.](\d{1,2})[-:/.](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+          if (!m) return "";
+          const p = (v) => String(v || "0").padStart(2, "0");
+          const mo = +m[2], d = +m[3], h = +(m[4] || 0), mi = +m[5] || 0, se = +(m[6] || 0);
+          if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 59) return "";
+          return `${m[1]}:${p(mo)}:${p(d)} ${p(h)}:${p(mi)}:${p(se)}`;
+        },
+
         // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
         buildTiffBuffer(meta) {
           const encoder = new TextEncoder();
@@ -2428,7 +2440,7 @@
           const modelStr = (meta.model || "").trim();
           const artistStr = (meta.artist || "").trim();
           const softwareStr = (meta.software || "").trim();
-          const dateTimeStr = (meta.dateTime || "").trim();
+          const dateTimeStr = this.normalizeDate(meta.dateTime);
           const copyrightStr = (meta.copyright || "").trim();
           const descStr = (meta.description || "").trim();
 
@@ -2462,18 +2474,27 @@
             new DataView(buf.buffer).setUint32(0, val, true);
             list.push({ tag, type: 4, count: 1, data: buf });
           };
+          const gcd = (x, y) => (y ? gcd(y, x % y) : x);
           const addRational = (list, tag, floatVal, scale = 10000) => {
-            if (!(floatVal > 0)) return;
+            if (!(floatVal > 0) || !Number.isFinite(floatVal)) return;
+            let num;
+            let den;
+            const inv = 1 / floatVal;
+            if (floatVal < 1 && Math.abs(inv - Math.round(inv)) / inv < 0.01) {
+              // Classic shutter fractions such as 1/125 s
+              num = 1;
+              den = Math.round(inv);
+            } else {
+              num = Math.round(floatVal * scale);
+              den = scale;
+              const g = gcd(num, den);
+              if (g > 1) { num /= g; den /= g; }
+            }
+            if (num < 1 || num > 0xffffffff || den < 1) return;
             const buf = new Uint8Array(8);
             const dv = new DataView(buf.buffer);
-            if (floatVal < 1) {
-              const den = Math.round(1 / floatVal);
-              dv.setUint32(0, 1, true);
-              dv.setUint32(4, Math.max(1, den), true);
-            } else {
-              dv.setUint32(0, Math.round(floatVal * scale), true);
-              dv.setUint32(4, scale, true);
-            }
+            dv.setUint32(0, num, true);
+            dv.setUint32(4, den, true);
             list.push({ tag, type: 5, count: 1, data: buf });
           };
 
@@ -2497,26 +2518,27 @@
 
           const gpsIfd = [];
           if (hasGpsSub) {
-            const writeDms = (tag, degFloat) => {
-              const abs = Math.abs(degFloat);
-              const d = Math.floor(abs);
-              const mFloat = (abs - d) * 60;
-              const m = Math.floor(mFloat);
-              const s = (mFloat - m) * 60;
+            const writeDms = (tag, degFloat, limit) => {
+              // Work in 1/10000 arc-seconds so rounding can never yield 60" or 60'
+              const total = Math.round(Math.min(Math.abs(degFloat), limit) * 3600 * 10000);
+              const d = Math.floor(total / 36000000);
+              const rem = total - d * 36000000;
+              const m = Math.floor(rem / 600000);
+              const sNum = rem - m * 600000;
               const buf = new Uint8Array(24);
               const dv = new DataView(buf.buffer);
               dv.setUint32(0, d, true); dv.setUint32(4, 1, true);
               dv.setUint32(8, m, true); dv.setUint32(12, 1, true);
-              dv.setUint32(16, Math.round(s * 10000), true); dv.setUint32(20, 10000, true);
+              dv.setUint32(16, sNum, true); dv.setUint32(20, 10000, true);
               gpsIfd.push({ tag, type: 5, count: 3, data: buf });
             };
             if (!Number.isNaN(latVal)) {
               addAscii(gpsIfd, 0x0001, latVal >= 0 ? "N" : "S");
-              writeDms(0x0002, latVal);
+              writeDms(0x0002, latVal, 90);
             }
             if (!Number.isNaN(lngVal)) {
               addAscii(gpsIfd, 0x0003, lngVal >= 0 ? "E" : "W");
-              writeDms(0x0004, lngVal);
+              writeDms(0x0004, lngVal, 180);
             }
           }
 
