@@ -4509,7 +4509,11 @@
             "image/avif": "avif"
           };
           const ext = extMap[state.outputFormat] || "jpg";
-          const cleanName = (els.inpOutputFilename.value.trim() || "pixelstudio_output").replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, "_");
+          const cleanName = (els.inpOutputFilename.value || "")
+            // Only strip characters that are illegal in file names; keep dots, spaces and non-Latin scripts
+            .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
+            .replace(/\.(jpe?g|png|webp|bmp|avif)$/i, "")
+            .replace(/^[\s.]+|[\s.]+$/g, "") || "pixelstudio_output";
           const fullFilename = `${cleanName}.${ext}`;
 
           const link = document.createElement("a");
