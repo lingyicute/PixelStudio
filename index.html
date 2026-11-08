@@ -3366,13 +3366,48 @@
           state.cropH = Math.min(state.cropH, rotH);
           state.cropX = Math.max(0, Math.min(state.cropX, rotW - state.cropW));
           state.cropY = Math.max(0, Math.min(state.cropY, rotH - state.cropH));
-          syncResizeFromCrop(1);
+          // Output size (targetW/H) is kept: callers transform it together with the crop
         }
 
         syncCropInputs();
         syncResizeInputs();
         renderStageCanvas();
         scheduleOutputEncode();
+      }
+
+      function setRatioChipActive(ratio) {
+        document.querySelectorAll("#cropRatioChips .m3-chip").forEach((ch) => {
+          ch.classList.toggle("active", ch.dataset.ratio === ratio);
+        });
+      }
+
+      // Apply an on-screen operation (rotate / flip) to the crop rectangle and output size so the
+      // selection keeps covering the same picture content instead of being reset or clamped.
+      function transformCropForOp(op) {
+        const { cropX: x, cropY: y, cropW: w, cropH: h, rotW, rotH } = state;
+        if (op === "cw") {
+          state.cropX = rotH - (y + h); state.cropY = x; state.cropW = h; state.cropH = w;
+        } else if (op === "ccw") {
+          state.cropX = y; state.cropY = rotW - (x + w); state.cropW = h; state.cropH = w;
+        } else if (op === "flipH") {
+          state.cropX = rotW - (x + w);
+        } else if (op === "flipV") {
+          state.cropY = rotH - (y + h);
+        }
+        if (op === "cw" || op === "ccw") {
+          const tw = state.targetW;
+          state.targetW = state.targetH;
+          state.targetH = tw;
+          // A fixed ratio flips orientation with the picture (4:3 -> 3:4); fall back to free if no such preset
+          const r = state.cropRatio;
+          if (r !== "free" && r !== "original") {
+            const [a, b] = r.split(":");
+            const inv = `${b}:${a}`;
+            const hasChip = document.querySelector(`#cropRatioChips .m3-chip[data-ratio="${inv}"]`);
+            state.cropRatio = hasChip ? inv : "free";
+            setRatioChipActive(state.cropRatio);
+          }
+        }
       }
 
       function syncCropInputs() {
@@ -4084,19 +4119,31 @@
 
         // 4. Stage Rotate / Flip / Reset / Compare
         $("btnRotateLeft").addEventListener("click", () => {
+          if (!state.hasImage) return;
+          transformCropForOp("ccw");
           state.rotation = (state.rotation + 270) % 360;
           rebuildTransformedSource(false);
         });
         $("btnRotateRight").addEventListener("click", () => {
+          if (!state.hasImage) return;
+          transformCropForOp("cw");
           state.rotation = (state.rotation + 90) % 360;
           rebuildTransformedSource(false);
         });
+        // The canvas applies flip BEFORE rotation, so at 90°/270° a screen-horizontal flip
+        // has to toggle the source-space vertical flip (and vice versa).
         $("btnFlipH").addEventListener("click", () => {
-          state.flipH = !state.flipH;
+          if (!state.hasImage) return;
+          transformCropForOp("flipH");
+          if (state.rotation % 180 !== 0) state.flipV = !state.flipV;
+          else state.flipH = !state.flipH;
           rebuildTransformedSource(false);
         });
         $("btnFlipV").addEventListener("click", () => {
-          state.flipV = !state.flipV;
+          if (!state.hasImage) return;
+          transformCropForOp("flipV");
+          if (state.rotation % 180 !== 0) state.flipH = !state.flipH;
+          else state.flipV = !state.flipV;
           rebuildTransformedSource(false);
         });
         $("btnResetAll").addEventListener("click", () => {
