@@ -4121,6 +4121,12 @@
         $("btnSelectFile").addEventListener("click", () => els.fileInput.click());
         $("btnReplaceFileTop").addEventListener("click", () => els.fileInput.click());
         $("btnLoadDemo").addEventListener("click", loadDemoImage);
+        // The card promises "点击选择文件": make the whole empty-state card clickable
+        els.dropzoneCard.style.cursor = "pointer";
+        els.dropzoneCard.addEventListener("click", (e) => {
+          if (e.target.closest("button")) return;
+          els.fileInput.click();
+        });
 
         els.fileInput.addEventListener("change", (e) => {
           if (e.target.files && e.target.files[0]) {
