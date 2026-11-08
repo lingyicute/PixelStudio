@@ -2493,6 +2493,9 @@
             new DataView(buf.buffer).setUint32(0, val, true);
             list.push({ tag, type: 4, count: 1, data: buf });
           };
+          const addRaw = (list, tag, type, count, bytes) => {
+            list.push({ tag, type, count, data: Uint8Array.from(bytes) });
+          };
           const gcd = (x, y) => (y ? gcd(y, x % y) : x);
           const addRational = (list, tag, floatVal, scale = 10000) => {
             if (!(floatVal > 0) || !Number.isFinite(floatVal)) return;
@@ -2528,6 +2531,7 @@
 
           const exifIfd = [];
           if (hasExifSub) {
+            addRaw(exifIfd, 0x9000, 7, 4, [0x30, 0x32, 0x33, 0x30]); // ExifVersion "0230" (mandatory)
             addRational(exifIfd, 0x829a, expTime, 1000000);
             addRational(exifIfd, 0x829d, fNum, 100);
             if (isoVal > 0) addShort(exifIfd, 0x8827, Math.min(65535, isoVal));
@@ -2551,6 +2555,7 @@
               dv.setUint32(16, sNum, true); dv.setUint32(20, 10000, true);
               gpsIfd.push({ tag, type: 5, count: 3, data: buf });
             };
+            addRaw(gpsIfd, 0x0000, 1, 4, [2, 3, 0, 0]); // GPSVersionID 2.3.0.0
             if (!Number.isNaN(latVal)) {
               addAscii(gpsIfd, 0x0001, latVal >= 0 ? "N" : "S");
               writeDms(0x0002, latVal, 90);
@@ -3848,6 +3853,7 @@
             }
           } catch (err) {
             console.warn("EXIF 写入失败，已输出不含元数据的文件", err);
+            if (seq === encodeSeq) showToast("EXIF 写入失败，已输出不含元数据的文件：" + ((err && err.message) || err));
           }
 
           if (seq !== encodeSeq) return;
