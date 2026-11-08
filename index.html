@@ -2932,6 +2932,7 @@
         targetH: 0,
         lockAspect: true,
         resampleQuality: "high",
+        resizeScale: 1, // Exact output/crop scale factor (slider is only a rounded view of it)
 
         // EXIF
         stripExif: false,
@@ -3358,6 +3359,7 @@
           state.cropH = rotH;
           state.targetW = rotW;
           state.targetH = rotH;
+          state.resizeScale = 1;
           els.sliderScalePercent.value = 100;
           els.scalePercentBadge.textContent = "100%";
         } else {
@@ -3423,6 +3425,7 @@
         const cw = Math.max(1, Math.round(state.cropW));
         const ch = Math.max(1, Math.round(state.cropH));
         if (scaleFactor !== null) {
+          state.resizeScale = scaleFactor;
           state.targetW = Math.max(1, Math.round(cw * scaleFactor));
           state.targetH = Math.max(1, Math.round(ch * scaleFactor));
         } else if (state.lockAspect) {
@@ -3438,6 +3441,18 @@
         const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
         els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
         els.scalePercentBadge.textContent = `${pct}%`;
+        syncResizePresetChips();
+      }
+
+      // Highlight the preset chip that matches the current scale / width (if any)
+      function syncResizePresetChips() {
+        const scale = state.targetW / Math.max(1, state.cropW);
+        document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => {
+          let match = false;
+          if (c.dataset.scale) match = Math.abs(parseFloat(c.dataset.scale) - scale) < 0.005;
+          else if (c.dataset.maxw) match = parseInt(c.dataset.maxw, 10) === Math.round(state.targetW);
+          c.classList.toggle("active", match);
+        });
       }
 
       // Fit stage canvas cleanly into viewport while preserving exact aspect ratio
@@ -3541,7 +3556,7 @@
         y = Math.max(0, Math.min(state.rotH - h, Math.round(y)));
         state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
         syncCropInputs();
-        syncResizeFromCrop(parseFloat(els.sliderScalePercent.value) / 100 || 1);
+        syncResizeFromCrop(state.resizeScale);
         updateCropBoxVisual();
         scheduleOutputEncode();
       });
@@ -3639,7 +3654,7 @@
         state.cropH = Math.max(minSize, Math.min(state.rotH - state.cropY, Math.round(nh)));
 
         syncCropInputs();
-        const currentScale = parseFloat(els.sliderScalePercent.value) / 100 || 1;
+        const currentScale = state.resizeScale;
         syncResizeFromCrop(currentScale);
         updateCropBoxVisual();
       });
@@ -3673,7 +3688,7 @@
         state.cropY = Math.round((state.rotH - state.cropH) / 2);
 
         syncCropInputs();
-        const currentScale = parseFloat(els.sliderScalePercent.value) / 100 || 1;
+        const currentScale = state.resizeScale;
         syncResizeFromCrop(currentScale);
         updateCropBoxVisual();
         scheduleOutputEncode();
@@ -4198,7 +4213,7 @@
           state.cropW = w;
           state.cropH = h;
           syncCropInputs();
-          const currentScale = parseFloat(els.sliderScalePercent.value) / 100 || 1;
+          const currentScale = state.resizeScale;
           syncResizeFromCrop(currentScale);
           updateCropBoxVisual();
           scheduleOutputEncode();
@@ -4242,18 +4257,8 @@
           els.iconLockOpen.style.display = state.lockAspect ? "none" : "block";
         });
 
-        // Highlight the preset chip that matches the current scale / width (if any)
-        const syncResizePresetChips = () => {
-          const scale = state.targetW / Math.max(1, state.cropW);
-          document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => {
-            let match = false;
-            if (c.dataset.scale) match = Math.abs(parseFloat(c.dataset.scale) - scale) < 0.005;
-            else if (c.dataset.maxw) match = parseInt(c.dataset.maxw, 10) === Math.round(state.targetW);
-            c.classList.toggle("active", match);
-          });
-        };
-
         const afterManualResize = () => {
+          state.resizeScale = state.targetW / Math.max(1, state.cropW);
           const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
           els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
           els.scalePercentBadge.textContent = `${pct}%`;
