@@ -3807,8 +3807,9 @@
           if (!rawBlob || (rawBlob.type && rawBlob.type !== requestedFormat)) {
             if (requestedFormat !== "image/png") {
               showToast("当前浏览器不支持导出该格式，已自动回退为 PNG");
-              selectFormatUI("image/png");
-              generateOutputBlob();
+              if (requestedFormat === "image/avif") $("btnFormatAvif").style.display = "none";
+              // Go through the real button so banner / matte row / compression mode stay consistent
+              document.querySelector('#formatSegmented .segmented-btn[data-format="image/png"]').click();
             } else {
               showToast("编码失败：输出尺寸过大或内存不足，请降低目标尺寸");
               clearOutput();
@@ -4409,6 +4410,7 @@
           btn.addEventListener("click", () => {
             document.querySelectorAll("#formatSegmented .segmented-btn").forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
+            const wasBmp = state.outputFormat === "image/bmp";
             state.outputFormat = btn.dataset.format;
 
             // Show background matte picker for formats without transparency
@@ -4417,7 +4419,12 @@
 
             // BMP is strictly lossless
             if (state.outputFormat === "image/bmp") {
+              if (!wasBmp) state.modeBeforeBmp = state.compressionMode;
               setCompressionMode("lossless");
+            } else if (wasBmp && state.modeBeforeBmp) {
+              // Leaving BMP: give the user back the mode that was forced off
+              setCompressionMode(state.modeBeforeBmp);
+              state.modeBeforeBmp = null;
             }
             updateCompressionBannerText();
             scheduleOutputEncode();
