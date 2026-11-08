@@ -3573,6 +3573,7 @@
         const handle = e.target.closest(".crop-handle");
         const dir = handle ? handle.dataset.dir : "move";
         els.cropBox.setPointerCapture(e.pointerId);
+        els.cropBox.focus({ preventScroll: true }); // pointerdown is default-prevented, so focus manually for arrow-key nudging
 
         cropDragState = {
           pointerId: e.pointerId,
@@ -4390,9 +4391,13 @@
           els.exifFNumber, els.exifExposure, els.exifIso, els.exifFocal,
           els.exifGpsLat, els.exifGpsLng
         ].forEach((inp) => {
-          inp.addEventListener("change", () => {
-            readExifFromInputs();
-            scheduleOutputEncode();
+          // "input" (not only "change") so an edit is encoded before the user clicks export;
+          // otherwise the blur-triggered re-encode disables the button and swallows the first click.
+          ["input", "change"].forEach((evt) => {
+            inp.addEventListener(evt, () => {
+              readExifFromInputs();
+              scheduleOutputEncode();
+            });
           });
         });
 
@@ -4496,7 +4501,8 @@
         });
 
         els.inpCompressionExact.addEventListener("change", () => {
-          updateCompressionRate(parseInt(els.inpCompressionExact.value, 10) || 20);
+          const v = parseInt(els.inpCompressionExact.value, 10);
+          updateCompressionRate(Number.isFinite(v) ? v : state.compressionRate);
         });
 
         document.querySelectorAll("#compressionPresets .m3-chip").forEach((chip) => {
