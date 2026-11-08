@@ -3577,8 +3577,20 @@
         }
         if (!handled) return;
         e.preventDefault();
-        w = Math.max(Math.min(16, state.rotW), Math.min(state.rotW, Math.round(w)));
-        h = Math.max(Math.min(16, state.rotH), Math.min(state.rotH, Math.round(h)));
+        const minW = Math.min(16, state.rotW);
+        const minH = Math.min(16, state.rotH);
+        if (e.shiftKey) {
+          // Resizing keeps the top-left corner fixed, so only the room right/below limits growth
+          w = Math.max(minW, Math.min(state.rotW - x, w));
+          h = Math.max(minH, Math.min(state.rotH - y, h));
+          if (lockedRatio) {
+            // Clamping each axis separately would break the ratio: shrink to the largest box that fits
+            w = Math.max(minW, Math.min(w, h * lockedRatio));
+            h = w / lockedRatio;
+          }
+        }
+        w = Math.max(minW, Math.min(state.rotW, Math.round(w)));
+        h = Math.max(minH, Math.min(state.rotH, Math.round(h)));
         x = Math.max(0, Math.min(state.rotW - w, Math.round(x)));
         y = Math.max(0, Math.min(state.rotH - h, Math.round(y)));
         state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
@@ -4268,6 +4280,12 @@
           state.cropY = y;
           state.cropW = w;
           state.cropH = h;
+          // A typed size that no longer matches the locked ratio would make the next drag jump
+          const lockedRatio = parseRatioValue(state.cropRatio);
+          if (lockedRatio && Math.abs(w / h - lockedRatio) / lockedRatio > 0.02) {
+            state.cropRatio = "free";
+            setRatioChipActive("free");
+          }
           syncCropInputs();
           const currentScale = state.resizeScale;
           syncResizeFromCrop(currentScale);
