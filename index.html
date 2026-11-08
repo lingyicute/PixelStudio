@@ -2626,7 +2626,7 @@
           if (jpegBytes.length < 4 || jpegBytes[0] !== 0xff || jpegBytes[1] !== 0xd8) {
             return jpegBytes;
           }
-          // Strip any existing APP1 (0xFFE1) or COM (0xFFFE) segments after SOI
+          // Drop any existing APP1 (0xFFE1) segments (EXIF / XMP) after SOI
           const chunks = [new Uint8Array([0xff, 0xd8])];
           let pos = 2;
           while (pos + 4 <= jpegBytes.length) {
@@ -2652,6 +2652,10 @@
           if (!stripExif) {
             const tiffBytes = this.buildTiffBuffer(meta);
             const app1Len = 2 + 6 + tiffBytes.length;
+            if (app1Len > 0xffff) {
+              // A JPEG segment cannot exceed 64 KB; skip EXIF rather than emit a corrupt file
+              throw new Error("EXIF 数据超过 JPEG 单段 64KB 上限");
+            }
             const app1Seg = new Uint8Array(2 + app1Len);
             app1Seg[0] = 0xff;
             app1Seg[1] = 0xe1;
@@ -2660,7 +2664,9 @@
             // "Exif\0\0"
             app1Seg.set([0x45, 0x78, 0x69, 0x66, 0x00, 0x00], 4);
             app1Seg.set(tiffBytes, 10);
-            chunks.splice(1, 0, app1Seg);
+            // Keep JFIF APP0 first (required by the JFIF spec), EXIF directly after it
+            const hasApp0 = chunks.length > 1 && chunks[1][0] === 0xff && chunks[1][1] === 0xe0;
+            chunks.splice(hasApp0 ? 2 : 1, 0, app1Seg);
           }
 
           const totalLen = chunks.reduce((sum, c) => sum + c.length, 0);
