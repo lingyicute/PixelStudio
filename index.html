@@ -2405,6 +2405,10 @@
               } else if (tag === 0x8827) {
                 const iso = type === 3 ? view.getUint16(valOffset, little) : view.getUint32(valOffset, little);
                 if (iso > 0) out.iso = String(iso);
+              } else if (tag === 0x8832 && out.iso === "65535") {
+                // Overflowed ISO: the true value lives in RecommendedExposureIndex
+                const rei = type === 3 ? view.getUint16(valOffset, little) : view.getUint32(valOffset, little);
+                if (rei > 65535) out.iso = String(rei);
               } else if (tag === 0x920a) {
                 const r = this._readRational(view, valOffset, little);
                 if (r > 0) out.focalLength = String(Number(r.toFixed(1)));
@@ -2592,7 +2596,15 @@
             addRaw(exifIfd, 0x9000, 7, 4, [0x30, 0x32, 0x33, 0x30]); // ExifVersion "0230" (mandatory)
             addRational(exifIfd, 0x829a, expTime, 1000000);
             addRational(exifIfd, 0x829d, fNum, 100);
-            if (isoVal > 0) addShort(exifIfd, 0x8827, Math.min(65535, isoVal));
+            if (isoVal > 0) {
+              // ISOSpeedRatings is a SHORT: 65535 means "overflow", the real value goes in the LONG
+              // RecommendedExposureIndex tag together with SensitivityType = 2 (REI)
+              addShort(exifIfd, 0x8827, Math.min(65535, isoVal));
+              if (isoVal > 65535) {
+                addShort(exifIfd, 0x8830, 2);
+                addLong(exifIfd, 0x8832, Math.min(0xffffffff, isoVal));
+              }
+            }
             addAscii(exifIfd, 0x9003, dateTimeStr);
             addRational(exifIfd, 0x920a, focalVal, 100);
           }
