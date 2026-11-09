@@ -3856,6 +3856,7 @@
         els.sizeDeltaPill.textContent = "编码失败";
         els.sizeDeltaPill.classList.remove("increase");
         els.exportSpecSummary.textContent = "--";
+        if (state.compareMode) renderCompareView();
       }
 
       function setEncodePending(pending) {
@@ -4051,10 +4052,18 @@
          MODULE 9: BEFORE / AFTER VISUAL SPLIT COMPARISON
          ====================================================================== */
       function renderCompareView() {
-        if (!state.compareMode || !state.outputUrl) return;
+        if (!state.compareMode) return;
 
         // Stage is re-fitted to the OUTPUT aspect ratio and the "before" (cropped source) half is painted
         renderStageCanvas();
+
+        if (!state.outputUrl || !state.outputBlob) {
+          // No (valid) encoded result yet or the encode failed: never leave a stale "after" image behind
+          const aCanvas = els.compareAfterCanvas;
+          aCanvas.getContext("2d").clearRect(0, 0, aCanvas.width, aCanvas.height);
+          els.compareRightLabel.textContent = "输出预览";
+          return;
+        }
 
         const dispW = els.canvasStageInner.clientWidth;
         const dispH = els.canvasStageInner.clientHeight;
