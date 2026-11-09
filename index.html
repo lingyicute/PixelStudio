@@ -4575,6 +4575,12 @@
           state.cropY = 0;
           state.cropW = state.rotW;
           state.cropH = state.rotH;
+          // The full frame rarely matches a fixed preset: drop the lock so the next drag cannot jump
+          const lockedRatio = parseRatioValue(state.cropRatio);
+          if (lockedRatio && Math.abs(state.rotW / state.rotH - lockedRatio) / lockedRatio > 0.02) {
+            state.cropRatio = "free";
+            setRatioChipActive("free");
+          }
           syncCropInputs();
           syncResizeFromCrop(1);
           updateCropBoxVisual();
