@@ -4348,6 +4348,7 @@
 
       let compareDragPointer = null;
       els.compareDivider.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return; // right / middle click must not start a drag
         e.preventDefault();
         compareDragPointer = e.pointerId;
         els.compareDivider.setPointerCapture(e.pointerId);
@@ -4355,7 +4356,7 @@
       window.addEventListener("pointermove", (e) => {
         if (compareDragPointer === null || e.pointerId !== compareDragPointer) return;
         const rect = els.canvasStageInner.getBoundingClientRect();
-        state.compareSplit = (e.clientX - rect.left) / Math.max(1, rect.width);
+        state.compareSplit = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
         updateCompareClip();
       });
       const endCompareDrag = (e) => {
