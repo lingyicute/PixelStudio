@@ -1681,6 +1681,11 @@
         transition-duration: 0.01ms !important;
       }
     }
+    /* Reserve room for the floating toolbar so tall pictures (and their bottom crop handles) are not covered by it */
+    .canvas-viewport.has-image { padding-bottom: 72px; }
+    @media (max-width: 767px) {
+      .canvas-viewport.has-image { padding-bottom: 60px; }
+    }
   </style>
 </head>
 <body>
@@ -3542,6 +3547,7 @@
 
         // Update UI visibility
         els.dropzoneCard.style.display = "none";
+        els.canvasViewport.classList.add("has-image");
         els.canvasStageInner.classList.add("visible");
         els.stageToolbar.classList.add("visible");
         els.fileSummaryPill.classList.add("visible");
@@ -3744,8 +3750,11 @@
         if (!state.hasImage || !state.transformedCanvas) return;
 
         const vpRect = els.canvasViewport.getBoundingClientRect();
-        const maxW = Math.max(120, vpRect.width - 36);
-        const maxH = Math.max(120, vpRect.height - 48);
+        const vpStyle = getComputedStyle(els.canvasViewport);
+        const padX = (parseFloat(vpStyle.paddingLeft) || 0) + (parseFloat(vpStyle.paddingRight) || 0);
+        const padY = (parseFloat(vpStyle.paddingTop) || 0) + (parseFloat(vpStyle.paddingBottom) || 0);
+        const maxW = Math.max(120, vpRect.width - padX - 4);
+        const maxH = Math.max(120, vpRect.height - padY - 8);
 
         // In compare mode the stage shows the OUTPUT (cropped + resized), so follow its aspect ratio;
         // otherwise follow the full rotated source so the crop box maps 1:1 onto it.
