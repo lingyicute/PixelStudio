@@ -3874,12 +3874,16 @@
         const minH = Math.min(16, state.rotH);
         if (e.shiftKey) {
           // Resizing keeps the top-left corner fixed, so only the room right/below limits growth
-          w = Math.max(minW, Math.min(state.rotW - x, w));
-          h = Math.max(minH, Math.min(state.rotH - y, h));
+          const roomW = state.rotW - x;
+          const roomH = state.rotH - y;
           if (lockedRatio) {
-            // Clamping each axis separately would break the ratio: shrink to the largest box that fits
-            w = Math.max(minW, Math.min(w, h * lockedRatio));
+            // Clamping each axis separately would break the ratio: clamp within the largest & smallest valid box
+            const minBoxW = Math.min(roomW, roomH * lockedRatio, Math.max(minW, minH * lockedRatio));
+            w = Math.max(minBoxW, Math.min(w, roomW, roomH * lockedRatio));
             h = w / lockedRatio;
+          } else {
+            w = Math.max(minW, Math.min(roomW, w));
+            h = Math.max(minH, Math.min(roomH, h));
           }
         }
         w = Math.max(minW, Math.min(state.rotW, Math.round(w)));
@@ -3969,13 +3973,13 @@
             if (dir === "n" || dir === "s") nw = nh * lockedRatio;
             else nh = nw / lockedRatio;
 
-            // Available room in each axis from the anchored side
-            const roomW = anchorRight ? right : state.rotW - nx;
-            const roomH = anchorBottom ? bottom : state.rotH - ny;
+            // Available room in each axis (pure N/S or E/W drags can slide the perpendicular axis inside the frame)
+            const roomW = (dir === "n" || dir === "s") ? state.rotW : (anchorRight ? right : state.rotW - nx);
+            const roomH = (dir === "e" || dir === "w") ? state.rotH : (anchorBottom ? bottom : state.rotH - ny);
             if (nw > roomW) { nw = roomW; nh = nw / lockedRatio; }
             if (nh > roomH) { nh = roomH; nw = nh * lockedRatio; }
-            if (nw < minSize) { nw = minSize; nh = nw / lockedRatio; }
-            if (nh < minSize) { nh = minSize; nw = nh * lockedRatio; }
+            const minBoxW = Math.min(roomW, roomH * lockedRatio, Math.max(minSize, minSize * lockedRatio));
+            if (nw < minBoxW) { nw = minBoxW; nh = nw / lockedRatio; }
 
             if (anchorRight) nx = right - nw;
             if (anchorBottom) ny = bottom - nh;
@@ -4712,6 +4716,11 @@
           state.flipH = false;
           state.flipV = false;
           state.cropRatio = "free";
+          state.lockAspect = true;
+          els.btnLockAspect.classList.add("active");
+          els.btnLockAspect.setAttribute("aria-pressed", "true");
+          els.iconLockClosed.style.display = "block";
+          els.iconLockOpen.style.display = "none";
           document.querySelectorAll("#cropRatioChips .m3-chip").forEach((ch) => {
             ch.classList.toggle("active", ch.dataset.ratio === "free");
           });
@@ -4744,14 +4753,20 @@
           });
         });
 
-        const handleNumericCropChange = () => {
+        const handleNumericCropChange = (e) => {
           if (!state.hasImage) return;
-          let x = Math.max(0, parseInt(els.inpCropX.value, 10) || 0);
-          let y = Math.max(0, parseInt(els.inpCropY.value, 10) || 0);
+          const target = e && e.target;
           const minW = Math.min(16, state.rotW);
           const minH = Math.min(16, state.rotH);
+          let x = Math.min(state.rotW - minW, Math.max(0, parseInt(els.inpCropX.value, 10) || 0));
+          let y = Math.min(state.rotH - minH, Math.max(0, parseInt(els.inpCropY.value, 10) || 0));
           let w = Math.min(state.rotW, Math.max(minW, parseInt(els.inpCropW.value, 10) || minW));
           let h = Math.min(state.rotH, Math.max(minH, parseInt(els.inpCropH.value, 10) || minH));
+
+          // When X or Y is edited directly (e.g. from the initial full-frame state), shrink W/H to fit
+          // rather than snapping the newly typed X/Y back to 0
+          if (target === els.inpCropX && x + w > state.rotW) w = Math.max(minW, state.rotW - x);
+          if (target === els.inpCropY && y + h > state.rotH) h = Math.max(minH, state.rotH - y);
 
           // Keep the box fully inside the image (also for images smaller than 16 px)
           x = Math.min(x, state.rotW - w);
@@ -4770,7 +4785,8 @@
           syncCropInputs();
           const currentScale = state.resizeScale;
           syncResizeFromCrop(currentScale, true);
-          updateCropBoxVisual();
+          if (state.compareMode) renderStageCanvas();
+          else updateCropBoxVisual();
           scheduleOutputEncode();
         };
 
@@ -4783,7 +4799,8 @@
           state.cropX = Math.round((state.rotW - state.cropW) / 2);
           state.cropY = Math.round((state.rotH - state.cropH) / 2);
           syncCropInputs();
-          updateCropBoxVisual();
+          if (state.compareMode) renderStageCanvas();
+          else updateCropBoxVisual();
           scheduleOutputEncode();
         });
 
@@ -4800,8 +4817,9 @@
             setRatioChipActive("free");
           }
           syncCropInputs();
-          syncResizeFromCrop(1);
-          updateCropBoxVisual();
+          syncResizeFromCrop(state.resizeScale, true);
+          if (state.compareMode) renderStageCanvas();
+          else updateCropBoxVisual();
           scheduleOutputEncode();
         });
 
