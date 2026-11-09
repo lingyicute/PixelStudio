@@ -2385,7 +2385,16 @@
           return result;
         },
 
+        // A corrupt entry must not throw away what was already read from the same block
         _parseTiff(view, tiffStart, maxLen, out) {
+          try {
+            this._parseTiffUnsafe(view, tiffStart, maxLen, out);
+          } catch (err) {
+            console.warn("EXIF 数据部分损坏，已保留可读取的字段", err);
+          }
+        },
+
+        _parseTiffUnsafe(view, tiffStart, maxLen, out) {
           if (tiffStart + 8 > view.byteLength) return;
           const endian = view.getUint16(tiffStart, false);
           const little = endian === 0x4949; // 'II'
