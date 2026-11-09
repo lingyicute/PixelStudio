@@ -1667,6 +1667,9 @@
   </style>
 </head>
 <body>
+  <noscript>
+    <p style="margin:0;padding:24px;font:600 15px/1.6 system-ui,sans-serif;text-align:center;">像素工坊需要启用 JavaScript 才能运行，所有图片处理均在浏览器本地完成。</p>
+  </noscript>
   <div class="app-shell">
     <!-- ======================================================================
          TOP APP BAR
@@ -4127,8 +4130,29 @@
       function updateCompareClip() {
         const pct = Math.max(2, Math.min(98, state.compareSplit * 100));
         els.compareDivider.style.left = `${pct}%`;
+        els.compareDivider.setAttribute("aria-valuenow", String(Math.round(pct)));
         els.compareAfterCanvas.style.clipPath = `inset(0 0 0 ${pct}%)`;
       }
+
+      // Keyboard access for the before/after divider (Left/Right = 2%, Shift = 10%, Home/End = edges)
+      els.compareDivider.setAttribute("role", "slider");
+      els.compareDivider.setAttribute("tabindex", "0");
+      els.compareDivider.setAttribute("aria-label", "原图与输出对比分隔线，左右方向键移动");
+      els.compareDivider.setAttribute("aria-valuemin", "2");
+      els.compareDivider.setAttribute("aria-valuemax", "98");
+      els.compareDivider.setAttribute("aria-valuenow", "50");
+      els.compareDivider.addEventListener("keydown", (e) => {
+        const step = e.shiftKey ? 0.1 : 0.02;
+        let next = state.compareSplit;
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown") next -= step;
+        else if (e.key === "ArrowRight" || e.key === "ArrowUp") next += step;
+        else if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = 1;
+        else return;
+        e.preventDefault();
+        state.compareSplit = Math.max(0, Math.min(1, next));
+        updateCompareClip();
+      });
 
       let compareDragPointer = null;
       els.compareDivider.addEventListener("pointerdown", (e) => {
