@@ -2518,6 +2518,7 @@
         // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
         buildTiffBuffer(meta) {
           const encoder = new TextEncoder();
+          const MAX_TEXT_BYTES = 8000;
           const makeStr = (meta.make || "").trim();
           const modelStr = (meta.model || "").trim();
           const artistStr = (meta.artist || "").trim();
@@ -2540,7 +2541,14 @@
           const ifd0 = [];
           const addAscii = (list, tag, str) => {
             if (!str) return;
-            const raw = encoder.encode(str);
+            let raw = encoder.encode(str);
+            if (raw.length > MAX_TEXT_BYTES) {
+              // Cut on a UTF-8 character boundary so one oversized field cannot push the
+              // whole JPEG APP1 segment past 64 KB (which used to drop ALL metadata)
+              let end = MAX_TEXT_BYTES;
+              while (end > 0 && (raw[end] & 0xc0) === 0x80) end--;
+              raw = raw.subarray(0, end);
+            }
             const buf = new Uint8Array(raw.length + 1);
             buf.set(raw);
             buf[raw.length] = 0;
