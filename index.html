@@ -4567,7 +4567,18 @@
         // 6. Resize Controls
         els.btnLockAspect.addEventListener("click", () => {
           state.lockAspect = !state.lockAspect;
-          if (state.lockAspect) state.resizeScaleY = null;
+          if (state.lockAspect) {
+            state.resizeScaleY = null;
+            // Locking again must bring a stretched output back to the crop's own aspect ratio
+            if (state.hasImage && state.cropW > 0 && state.cropH > 0) {
+              const h = Math.max(1, Math.round(state.targetW * (Math.round(state.cropH) / Math.max(1, Math.round(state.cropW)))));
+              if (h !== Math.round(state.targetH)) {
+                state.targetH = h;
+                syncResizeInputs();
+                scheduleOutputEncode();
+              }
+            }
+          }
           els.btnLockAspect.classList.toggle("active", state.lockAspect);
           els.iconLockClosed.style.display = state.lockAspect ? "block" : "none";
           els.iconLockOpen.style.display = state.lockAspect ? "none" : "block";
