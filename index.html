@@ -3131,6 +3131,9 @@
         compressionMode: "lossy", // 'lossy' | 'lossless'
         compressionRate: 20,      // 1..95% (quality = 100 - compressionRate)
         modeBeforeBmp: null,      // Compression mode to restore when leaving BMP
+        formatTouched: false,     // The user picked an output format themselves
+        modeTouched: false,       // The user picked lossy / lossless themselves
+        autoFormatApplied: false, // The default output format was already matched to the first image
 
         // Live Output Cache
         outputBlob: null,
@@ -3543,7 +3546,27 @@
           ch.classList.toggle("active", ch.dataset.ratio === "free");
         });
 
+        applyDefaultOutputFormat(meta);
         rebuildTransformedSource(true);
+      }
+
+      // Export in the format the picture came in (once, for the first image, unless the user already
+      // chose): a PNG / WebP with transparency would otherwise silently be flattened onto a JPEG matte.
+      // PNG is also switched to lossless, because its "lossy" mode quantizes (and dithers) the colours.
+      function applyDefaultOutputFormat(meta) {
+        if (state.formatTouched || state.autoFormatApplied) return;
+        state.autoFormatApplied = true;
+        const ext = ((meta.fileName || "").match(/\.([a-z0-9]+)$/i) || [])[1];
+        const byMime = { "image/png": "image/png", "image/webp": "image/webp", "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
+        const byExt = { png: "image/png", webp: "image/webp", gif: "image/png", svg: "image/png", bmp: "image/png" };
+        const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()];
+        if (!target || target === state.outputFormat) return;
+        const btn = document.querySelector(`#formatSegmented .segmented-btn[data-format="${target}"]`);
+        if (!btn) return;
+        btn.click();
+        if (target === "image/png" && !state.modeTouched && state.compressionMode !== "lossless") {
+          document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
+        }
       }
 
       /* ======================================================================
@@ -4030,11 +4053,15 @@
       let imageSerial = 0;       // Bumped for every loaded image so a new picture never hits the cache
 
       function buildPixelKey(outW, outH) {
+        // Only settings that actually reach the encoder belong in the key: the matte colour only matters
+        // for JPEG / BMP and the rate only for lossy output, so changing them elsewhere keeps the cache
+        const usesMatte = state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp";
+        const isLossy = state.compressionMode === "lossy" && state.outputFormat !== "image/bmp";
         return JSON.stringify([
           imageSerial, state.rotation, state.flipH, state.flipV,
           Math.round(state.cropX), Math.round(state.cropY), Math.round(state.cropW), Math.round(state.cropH),
-          outW, outH, state.outputFormat, state.matteColor, state.resampleQuality,
-          state.compressionMode, state.compressionRate
+          outW, outH, state.outputFormat, usesMatte ? state.matteColor : "", state.resampleQuality,
+          isLossy ? state.compressionRate : "lossless"
         ]);
       }
 
@@ -4909,7 +4936,8 @@
         }, "image/avif");
 
         document.querySelectorAll("#formatSegmented .segmented-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
+          btn.addEventListener("click", (ev) => {
+            if (ev.isTrusted) state.formatTouched = true;
             document.querySelectorAll("#formatSegmented .segmented-btn").forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
             const wasBmp = state.outputFormat === "image/bmp";
@@ -4984,7 +5012,8 @@
         }
 
         document.querySelectorAll("#compressionModeSegmented .segmented-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
+          btn.addEventListener("click", (ev) => {
+            if (ev.isTrusted) state.modeTouched = true;
             if (state.outputFormat === "image/bmp" && btn.dataset.mode === "lossy") {
               showToast("BMP 格式仅支持无损导出，如需有损压缩请选择 JPEG / WebP");
               return;
