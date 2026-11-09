@@ -3393,6 +3393,7 @@
 
         const token = ++loadToken;
         c.toBlob((blob) => {
+          releaseCanvas(c); // The encoded bytes are all that is needed from the demo canvas
           if (!blob) {
             showToast("无法生成示例图片，请改为选择本地图片");
             return;
