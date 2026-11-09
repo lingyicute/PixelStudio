@@ -3862,6 +3862,8 @@
 
       els.cropBox.addEventListener("pointerdown", (e) => {
         if (!state.hasImage) return;
+        // Right / middle clicks and extra touches must not start (or hijack) a crop drag
+        if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
         e.preventDefault();
         e.stopPropagation();
         const handle = e.target.closest(".crop-handle");
