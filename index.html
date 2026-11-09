@@ -5084,7 +5084,7 @@
             "image/bmp": "bmp",
             "image/avif": "avif"
           };
-          const ext = extMap[state.outputFormat] || "jpg";
+          const ext = extMap[state.outputBlob.type] || extMap[state.outputFormat] || "jpg";
           const cleanName = (els.inpOutputFilename.value || "")
             // Only strip characters that are illegal in file names; keep dots, spaces and non-Latin scripts
             .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
