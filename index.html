@@ -3191,9 +3191,11 @@
         els.snackbar.textContent = msg;
         els.snackbar.classList.add("show");
         clearTimeout(toastTimer);
+        // Long warnings (downscale notice, EXIF failures) need more reading time than short confirmations
+        const duration = Math.min(7000, Math.max(2600, String(msg).length * 120));
         toastTimer = setTimeout(() => {
           els.snackbar.classList.remove("show");
-        }, 2600);
+        }, duration);
       }
 
       function formatBytes(bytes) {
