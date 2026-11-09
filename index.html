@@ -3944,6 +3944,7 @@
         if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
         state.outputUrl = null;
         state.outputBlob = null;
+        compareAfterCache = null;
         els.estimatedSizeLabel.textContent = "-- KB";
         els.sizeDeltaPill.textContent = "编码失败";
         els.sizeDeltaPill.classList.remove("increase");
@@ -4110,6 +4111,7 @@
         }
         state.outputBlob = blob;
         state.outputUrl = URL.createObjectURL(blob);
+        compareAfterCache = null; // Stale decoded copy of the previous output
         setEncodePending(false);
 
         const fmtExtMap = {
@@ -4146,6 +4148,21 @@
       /* ======================================================================
          MODULE 9: BEFORE / AFTER VISUAL SPLIT COMPARISON
          ====================================================================== */
+      let compareAfterCache = null; // { url, img, ready } of the decoded "after" image
+
+      function paintCompareAfter(img) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = Math.round(els.canvasStageInner.clientWidth * dpr);
+        const h = Math.round(els.canvasStageInner.clientHeight * dpr);
+        if (!w || !h) return;
+        els.compareAfterCanvas.width = w;
+        els.compareAfterCanvas.height = h;
+        const aCtx = els.compareAfterCanvas.getContext("2d");
+        aCtx.clearRect(0, 0, w, h);
+        aCtx.drawImage(img, 0, 0, w, h);
+        updateCompareClip();
+      }
+
       function renderCompareView() {
         if (!state.compareMode) return;
 
@@ -4160,23 +4177,25 @@
           return;
         }
 
-        const dispW = els.canvasStageInner.clientWidth;
-        const dispH = els.canvasStageInner.clientHeight;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-        // Decode the actual encoded output so the "after" half shows true compression artifacts
+        // Decode the actual encoded output so the "after" half shows true compression artifacts.
+        // The decoded image is cached per output URL: a window resize repaints this view on every
+        // frame and must not re-decode the whole file each time.
         const url = state.outputUrl;
-        const img = new Image();
-        img.onload = () => {
-          if (url !== state.outputUrl || !state.compareMode) return; // Superseded or mode left
-          els.compareAfterCanvas.width = Math.round(dispW * dpr);
-          els.compareAfterCanvas.height = Math.round(dispH * dpr);
-          const aCtx = els.compareAfterCanvas.getContext("2d");
-          aCtx.clearRect(0, 0, els.compareAfterCanvas.width, els.compareAfterCanvas.height);
-          aCtx.drawImage(img, 0, 0, els.compareAfterCanvas.width, els.compareAfterCanvas.height);
-          updateCompareClip();
-        };
-        img.src = url;
+        let entry = compareAfterCache;
+        if (!entry || entry.url !== url) {
+          const img = new Image();
+          entry = compareAfterCache = { url, img, ready: false };
+          img.onload = () => {
+            entry.ready = true;
+            if (compareAfterCache === entry && url === state.outputUrl && state.compareMode) paintCompareAfter(img);
+          };
+          img.onerror = () => {
+            if (compareAfterCache === entry) compareAfterCache = null;
+          };
+          img.src = url;
+        } else if (entry.ready) {
+          paintCompareAfter(entry.img);
+        }
 
         const modeStr = state.compressionMode === "lossless" ? "无损输出" : `压缩率 ${state.compressionRate}%`;
         els.compareRightLabel.textContent = `${modeStr} (${formatBytes(state.outputBlob.size)})`;
@@ -4531,6 +4550,7 @@
             renderCompareView();
             showToast("拖动中线可实时对比原图与压缩输出");
           } else {
+            compareAfterCache = null; // Do not keep a decoded copy alive while comparing is off
             renderStageCanvas();
           }
         });
