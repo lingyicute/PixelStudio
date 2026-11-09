@@ -2373,7 +2373,7 @@
               if (tag === 0x9003) out.dateTime = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x829a) {
                 const r = this._readRational(view, valOffset, little);
-                if (r > 0) out.exposureTime = String(Number(r.toFixed(6)));
+                if (r > 0) out.exposureTime = String(Number(r.toPrecision(6))); // significant digits: 1/32000 s must survive
               } else if (tag === 0x829d) {
                 const r = this._readRational(view, valOffset, little);
                 if (r > 0) out.fNumber = String(Number(r.toFixed(2)));
@@ -2456,8 +2456,11 @@
           const m = s.match(/^(\d{4})[-:/.](\d{1,2})[-:/.](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
           if (!m) return "";
           const p = (v) => String(v || "0").padStart(2, "0");
-          const mo = +m[2], d = +m[3], h = +(m[4] || 0), mi = +m[5] || 0, se = +(m[6] || 0);
-          if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 59) return "";
+          const y = +m[1], mo = +m[2], d = +m[3], h = +(m[4] || 0), mi = +m[5] || 0, se = +(m[6] || 0);
+          if (mo < 1 || mo > 12) return "";
+          const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+          const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+          if (d < 1 || d > daysInMonth || h > 23 || mi > 59 || se > 59) return "";
           return `${m[1]}:${p(mo)}:${p(d)} ${p(h)}:${p(mi)}:${p(se)}`;
         },
 
@@ -4470,6 +4473,20 @@
               scheduleOutputEncode();
             });
           });
+        });
+
+        // Normalize the date once editing is done, and tell the user when it would be dropped on export
+        els.exifDateTime.addEventListener("change", () => {
+          const raw = els.exifDateTime.value.trim();
+          if (!raw) return;
+          const norm = ExifEngine.normalizeDate(raw);
+          if (norm) {
+            els.exifDateTime.value = norm;
+            readExifFromInputs();
+            scheduleOutputEncode();
+          } else {
+            showToast("拍摄时间格式无效（应为 YYYY:MM:DD HH:MM:SS），导出时将忽略该字段");
+          }
         });
 
         // 8. Format & Lossy/Lossless Compression Controls
