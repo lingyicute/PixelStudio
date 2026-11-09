@@ -3821,6 +3821,7 @@
       els.cropBox.setAttribute("aria-label", "裁剪选区，方向键移动，Shift+方向键调整大小");
       els.cropBox.addEventListener("keydown", (e) => {
         if (!state.hasImage) return;
+        if (e.ctrlKey || e.metaKey) return; // leave browser / OS shortcuts alone
         const stepPx = e.altKey ? 10 : 1;
         let { cropX: x, cropY: y, cropW: w, cropH: h } = state;
         const lockedRatio = parseRatioValue(state.cropRatio);
