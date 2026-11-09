@@ -3890,6 +3890,7 @@
       window.addEventListener("pointermove", (e) => {
         if (!cropDragState || e.pointerId !== cropDragState.pointerId) return;
         const { dir, startX, startY, initCropX, initCropY, initCropW, initCropH, stageW, stageH } = cropDragState;
+        invalidateOutput();
         const dxPx = ((e.clientX - startX) / stageW) * state.rotW;
         const dyPx = ((e.clientY - startY) / stageH) * state.rotH;
         const minSize = Math.min(16, state.rotW, state.rotH);
@@ -3998,6 +3999,15 @@
          ====================================================================== */
       let encodeTimer = null;
       let encodeSeq = 0; // Monotonic token: results of superseded (older) encodes are discarded
+      // The result on screen no longer matches the settings (e.g. mid crop drag): block export of the
+      // stale file now, but leave the actual encode to whoever finishes the gesture
+      function invalidateOutput() {
+        if (!state.hasImage) return;
+        clearTimeout(encodeTimer);
+        encodeSeq++;
+        setEncodePending(true);
+      }
+
       function scheduleOutputEncode() {
         if (!state.hasImage) return;
         clearTimeout(encodeTimer);
