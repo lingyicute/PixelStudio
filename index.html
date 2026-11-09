@@ -3341,12 +3341,17 @@
             }
             // Runs before init so that a downscale warning raised by init is not overwritten
             if (typeof onLoaded === "function") onLoaded();
-            initWorkspaceWithImage(img, {
-              fileName: file.name,
-              fileSize: file.size,
-              mimeType: file.type,
-              exif: parsedExif
-            });
+            try {
+              initWorkspaceWithImage(img, {
+                fileName: file.name,
+                fileSize: file.size,
+                mimeType: file.type,
+                exif: parsedExif
+              });
+            } catch (initErr) {
+              console.error(initErr);
+              showToast("图片载入失败：" + ((initErr && initErr.message) || "内存不足，请换一张较小的图片"));
+            }
           };
           img.onerror = () => {
             URL.revokeObjectURL(blobUrl);
