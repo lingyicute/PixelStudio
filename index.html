@@ -3833,6 +3833,8 @@
         state.outputBlob = null;
         els.estimatedSizeLabel.textContent = "-- KB";
         els.sizeDeltaPill.textContent = "编码失败";
+        els.sizeDeltaPill.classList.remove("increase");
+        els.exportSpecSummary.textContent = "--";
       }
 
       function setEncodePending(pending) {
