@@ -2067,7 +2067,7 @@
                   <span class="m3-switch-desc">彻底移除设备型号、拍摄时间与 GPS 坐标</span>
                 </div>
                 <label class="m3-switch">
-                  <input type="checkbox" id="chkStripExif" />
+                  <input type="checkbox" id="chkStripExif" aria-label="导出时清空全部 EXIF 隐私信息" />
                   <span class="m3-switch-track"></span>
                   <span class="m3-switch-thumb"></span>
                 </label>
@@ -4258,6 +4258,9 @@
             els.sizeDeltaPill.textContent = `+${diffPct.toFixed(1)}%`;
             els.sizeDeltaPill.classList.add("increase");
           }
+        } else {
+          els.sizeDeltaPill.textContent = "";
+          els.sizeDeltaPill.classList.remove("increase");
         }
 
         if (state.compareMode) {
