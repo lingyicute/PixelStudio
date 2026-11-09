@@ -1733,7 +1733,7 @@
           </svg>
         </button>
 
-        <button id="btnToggleCompareTop" class="btn btn-tonal btn-sm" disabled title="对比原图与压缩后画质">
+        <button id="btnToggleCompareTop" class="btn btn-tonal btn-sm" aria-pressed="false" disabled title="对比原图与压缩后画质">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3v18"/><path d="M5 12H2"/><path d="M22 12h-3"/><rect x="4" y="5" width="16" height="14" rx="2"/>
           </svg>
@@ -1757,7 +1757,7 @@
     <div class="workspace-body">
       <!-- M3 Navigation Rail (Desktop) / Navigation Bar (Mobile) -->
       <nav class="nav-rail" aria-label="功能导航">
-        <button class="nav-item active" data-tab="crop">
+        <button class="nav-item active" data-tab="crop" aria-current="page">
           <div class="nav-pill">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>
@@ -1961,7 +1961,7 @@
 
               <div style="display:flex;gap:8px;">
                 <button class="btn btn-tonal btn-sm" style="flex:1;" id="btnCenterCrop">选区居中</button>
-                <button class="btn btn-outlined btn-sm" style="flex:1;" id="btnToggleCropOverlay">显示/隐藏框线</button>
+                <button class="btn btn-outlined btn-sm" style="flex:1;" id="btnToggleCropOverlay" aria-pressed="true">显示/隐藏框线</button>
               </div>
             </div>
           </section>
@@ -1991,7 +1991,7 @@
                   <input type="number" id="inpResizeW" min="1" max="16384" step="1" value="1600" />
                 </div>
 
-                <button class="icon-btn active" id="btnLockAspect" title="锁定/解锁宽高比" aria-label="锁定宽高比">
+                <button class="icon-btn active" id="btnLockAspect" aria-pressed="true" title="锁定/解锁宽高比" aria-label="锁定宽高比">
                   <svg id="iconLockClosed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
@@ -3461,11 +3461,13 @@
           state.compareMode = false;
           els.btnToggleCompareTop.classList.remove("btn-filled");
           els.btnToggleCompareTop.classList.add("btn-tonal");
+          els.btnToggleCompareTop.setAttribute("aria-pressed", "false");
           els.compareOverlay.classList.remove("visible");
         }
 
         // Re-sync aspect-lock button visuals with reset state
         els.btnLockAspect.classList.add("active");
+        els.btnLockAspect.setAttribute("aria-pressed", "true");
         els.iconLockClosed.style.display = "block";
         els.iconLockOpen.style.display = "none";
 
@@ -4397,7 +4399,11 @@
             const tab = btn.dataset.tab;
             state.activeTab = tab;
 
-            document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b === btn));
+            document.querySelectorAll(".nav-item").forEach((b) => {
+              b.classList.toggle("active", b === btn);
+              if (b === btn) b.setAttribute("aria-current", "page");
+              else b.removeAttribute("aria-current");
+            });
 
             // On Desktop (>= 768px), keep export card always visible alongside active tool
             const isMobile = window.innerWidth < 768;
@@ -4544,6 +4550,7 @@
           state.compareMode = !state.compareMode;
           els.btnToggleCompareTop.classList.toggle("btn-filled", state.compareMode);
           els.btnToggleCompareTop.classList.toggle("btn-tonal", !state.compareMode);
+          els.btnToggleCompareTop.setAttribute("aria-pressed", String(state.compareMode));
           els.compareOverlay.classList.toggle("visible", state.compareMode);
           if (state.compareMode) {
             els.cropOverlay.classList.remove("visible");
@@ -4627,6 +4634,7 @@
 
         $("btnToggleCropOverlay").addEventListener("click", () => {
           state.showCropOverlay = !state.showCropOverlay;
+          $("btnToggleCropOverlay").setAttribute("aria-pressed", String(state.showCropOverlay));
           updateCropBoxVisual();
         });
 
@@ -4646,6 +4654,7 @@
             }
           }
           els.btnLockAspect.classList.toggle("active", state.lockAspect);
+          els.btnLockAspect.setAttribute("aria-pressed", String(state.lockAspect));
           els.iconLockClosed.style.display = state.lockAspect ? "block" : "none";
           els.iconLockOpen.style.display = state.lockAspect ? "none" : "block";
         });
