@@ -2495,7 +2495,8 @@
           if (!(seconds > 0)) return "";
           if (seconds < 1) {
             const inv = 1 / seconds;
-            if (Math.abs(inv - Math.round(inv)) / inv < 0.01) return `1/${Math.round(inv)}`;
+            // "1/1" would be a confusing way to spell a full second: leave 0.99x s as a decimal
+            if (Math.round(inv) >= 2 && Math.abs(inv - Math.round(inv)) / inv < 0.01) return `1/${Math.round(inv)}`;
           }
           return String(Number(seconds.toPrecision(6)));
         },
@@ -2564,7 +2565,7 @@
             let num;
             let den;
             const inv = 1 / floatVal;
-            if (floatVal < 1 && Math.abs(inv - Math.round(inv)) / inv < 0.01) {
+            if (floatVal < 1 && Math.round(inv) >= 2 && Math.abs(inv - Math.round(inv)) / inv < 0.01) {
               // Classic shutter fractions such as 1/125 s
               num = 1;
               den = Math.round(inv);
