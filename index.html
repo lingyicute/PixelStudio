@@ -4229,10 +4229,18 @@
       /* ======================================================================
          MODULE 10: EXIF FORM SYNC HELPERS
          ====================================================================== */
-      function syncExifToInputs() {
-        els.chkStripExif.checked = state.stripExif;
+      // pointer-events alone still lets keyboard users tab into (and edit) fields that are being
+      // ignored, so also make the whole block inert while "clear all EXIF" is on
+      function applyStripExifUi() {
         els.exifFormFields.style.opacity = state.stripExif ? "0.45" : "1";
         els.exifFormFields.style.pointerEvents = state.stripExif ? "none" : "auto";
+        els.exifFormFields.inert = state.stripExif;
+        els.exifFormFields.setAttribute("aria-disabled", String(state.stripExif));
+      }
+
+      function syncExifToInputs() {
+        els.chkStripExif.checked = state.stripExif;
+        applyStripExifUi();
 
         els.exifMake.value = state.exif.make;
         els.exifModel.value = state.exif.model;
@@ -4701,8 +4709,7 @@
         // 7. EXIF Controls
         els.chkStripExif.addEventListener("change", () => {
           state.stripExif = els.chkStripExif.checked;
-          els.exifFormFields.style.opacity = state.stripExif ? "0.45" : "1";
-          els.exifFormFields.style.pointerEvents = state.stripExif ? "none" : "auto";
+          applyStripExifUi();
           scheduleOutputEncode();
         });
 
