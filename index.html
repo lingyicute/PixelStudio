@@ -3545,10 +3545,20 @@
         const rotW = isSwapped ? srcH : srcW;
         const rotH = isSwapped ? srcW : srcH;
 
+        // Free the previous full-size bitmap BEFORE allocating the next one: holding both at once
+        // doubles the peak memory, which is what makes big photos fail on phones
+        const previousCanvas = state.transformedCanvas;
+        state.transformedCanvas = null;
+        releaseCanvas(previousCanvas);
+
         const tc = document.createElement("canvas");
         tc.width = rotW;
         tc.height = rotH;
         const ctx = tc.getContext("2d");
+        if (!ctx) {
+          showToast("无法创建画布，可能是内存不足");
+          return;
+        }
 
         // Exact integer matrix: Math.cos(π/2) is not 0, and a 1e-16 skew can make the browser
         // resample (blur) the edges of a quarter turn. Smoothing off keeps this step bit-exact.
@@ -3559,9 +3569,7 @@
         ctx.setTransform(cs * fx, sn * fx, -sn * fy, cs * fy, rotW / 2, rotH / 2);
         ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
 
-        const previousCanvas = state.transformedCanvas;
         state.transformedCanvas = tc;
-        releaseCanvas(previousCanvas);
         state.rotW = rotW;
         state.rotH = rotH;
 
