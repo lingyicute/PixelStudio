@@ -3113,13 +3113,17 @@
       const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       const MAX_CANVAS_PIXELS = IS_IOS ? 16000000 : 64000000;
+      const MAX_CANVAS_SIDE = 16384; // Also the largest export edge, so a full-size export never trips the limit
 
       // Downscale an oversized decoded image into a safe working source (only for extreme inputs)
       function ensureSafeSource(img) {
         const w = img.naturalWidth || img.width;
         const h = img.naturalHeight || img.height;
-        if (w * h <= MAX_CANVAS_PIXELS) return { source: img, w, h, downscaled: false };
-        const s = Math.sqrt(MAX_CANVAS_PIXELS / (w * h));
+        if (w * h <= MAX_CANVAS_PIXELS && w <= MAX_CANVAS_SIDE && h <= MAX_CANVAS_SIDE) {
+          return { source: img, w, h, downscaled: false };
+        }
+        // Panoramas and tall scans can stay under the pixel budget yet exceed the per-edge limit
+        const s = Math.min(Math.sqrt(MAX_CANVAS_PIXELS / (w * h)), MAX_CANVAS_SIDE / Math.max(w, h));
         const nw = Math.max(1, Math.floor(w * s));
         const nh = Math.max(1, Math.floor(h * s));
         const c = document.createElement("canvas");
@@ -3798,7 +3802,7 @@
         const outW = Math.max(1, Math.round(state.targetW));
         const outH = Math.max(1, Math.round(state.targetH));
 
-        if (outW * outH > MAX_CANVAS_PIXELS || outW > 16384 || outH > 16384) {
+        if (outW * outH > MAX_CANVAS_PIXELS || outW > MAX_CANVAS_SIDE || outH > MAX_CANVAS_SIDE) {
           showToast(`目标尺寸 ${outW}×${outH} 超出浏览器画布上限，请降低输出尺寸`);
           clearOutput();
           setEncodePending(false);
