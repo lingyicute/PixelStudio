@@ -3452,6 +3452,8 @@
         // Free the previous working canvases right away: big canvases are scarce on mobile browsers
         releaseCanvas(state.transformedCanvas);
         if (state.sourceImg instanceof HTMLCanvasElement && state.sourceImg !== safe.source) releaseCanvas(state.sourceImg);
+        imageSerial++;
+        rawEncodeCache = null;
         state.hasImage = true;
         state.sourceImg = safe.source;
         state.sourceW = safe.w;
@@ -4002,6 +4004,20 @@
         for (const t of temps) { t.width = 0; t.height = 0; }
       }
 
+      // The compressed pixels of the last successful encode, keyed by every setting that affects them.
+      // EXIF edits then skip the (slow) draw + compress step and only rewrite the metadata.
+      let rawEncodeCache = null; // { key, blob }
+      let imageSerial = 0;       // Bumped for every loaded image so a new picture never hits the cache
+
+      function buildPixelKey(outW, outH) {
+        return JSON.stringify([
+          imageSerial, state.rotation, state.flipH, state.flipV,
+          Math.round(state.cropX), Math.round(state.cropY), Math.round(state.cropW), Math.round(state.cropH),
+          outW, outH, state.outputFormat, state.matteColor, state.resampleQuality,
+          state.compressionMode, state.compressionRate
+        ]);
+      }
+
       function generateOutputBlob() {
         if (!state.hasImage || !state.transformedCanvas) return;
         const seq = ++encodeSeq;
@@ -4013,6 +4029,14 @@
           showToast(`目标尺寸 ${outW}×${outH} 超出浏览器画布上限，请降低输出尺寸`);
           clearOutput();
           setEncodePending(false);
+          return;
+        }
+
+        const requestedFormat = state.outputFormat;
+        const pixelKey = buildPixelKey(outW, outH);
+        if (rawEncodeCache && rawEncodeCache.key === pixelKey) {
+          // Only metadata (EXIF / strip switch) changed since the last encode: reuse the compressed pixels
+          finishEncode(rawEncodeCache.blob, requestedFormat, seq, outW, outH);
           return;
         }
 
@@ -4062,6 +4086,7 @@
           const imgData = ctx.getImageData(0, 0, outW, outH);
           const bmpBlob = CodecHelper.encodeBmp(imgData);
           releaseCanvas(outCanvas);
+          rawEncodeCache = { key: pixelKey, blob: bmpBlob };
           finalizeOutputBlob(bmpBlob, outW, outH);
           return;
         }
@@ -4071,7 +4096,6 @@
           CodecHelper.quantizeCanvasForLossyPng(ctx, outW, outH, quality);
         }
 
-        const requestedFormat = state.outputFormat;
         outCanvas.toBlob(async (rawBlob) => {
           // The encoded bytes are all we need: hand the (possibly huge) bitmap back immediately
           releaseCanvas(outCanvas);
@@ -4092,32 +4116,43 @@
             return;
           }
 
-          let finalBlob = rawBlob;
-          readExifFromInputs();
-
-          try {
-            // Inject or strip binary EXIF metadata (JPEG APP1 / PNG eXIf / WebP RIFF EXIF chunk)
-            if (requestedFormat === "image/jpeg") {
-              const buf = await rawBlob.arrayBuffer();
-              const processed = ExifEngine.processJpegBytes(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
-              finalBlob = new Blob([processed], { type: "image/jpeg" });
-            } else if (requestedFormat === "image/png") {
-              const buf = await rawBlob.arrayBuffer();
-              const processed = ExifEngine.injectPngExif(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
-              finalBlob = new Blob([processed], { type: "image/png" });
-            } else if (requestedFormat === "image/webp") {
-              const buf = await rawBlob.arrayBuffer();
-              const processed = ExifEngine.injectWebpExif(new Uint8Array(buf), state.stripExif, state.exif, outW, outH);
-              finalBlob = new Blob([processed], { type: "image/webp" });
-            }
-          } catch (err) {
-            console.warn("EXIF 写入失败，已输出不含元数据的文件", err);
-            if (seq === encodeSeq) showToast("EXIF 写入失败，已输出不含元数据的文件：" + ((err && err.message) || err));
-          }
-
-          if (seq !== encodeSeq) return;
-          finalizeOutputBlob(finalBlob, outW, outH);
+          rawEncodeCache = { key: pixelKey, blob: rawBlob }; // Metadata-only edits can reuse these bytes
+          finishEncode(rawBlob, requestedFormat, seq, outW, outH);
         }, requestedFormat, quality);
+      }
+
+      // Everything after pixel encoding: write / strip metadata, then publish the result.
+      // Also runs on its own when only EXIF fields changed and the compressed pixels are cached.
+      async function finishEncode(rawBlob, requestedFormat, seq, outW, outH) {
+        if (requestedFormat === "image/bmp") {
+          if (seq === encodeSeq) finalizeOutputBlob(rawBlob, outW, outH);
+          return;
+        }
+        let finalBlob = rawBlob;
+        readExifFromInputs();
+
+        try {
+          // Inject or strip binary EXIF metadata (JPEG APP1 / PNG eXIf / WebP RIFF EXIF chunk)
+          if (requestedFormat === "image/jpeg") {
+            const buf = await rawBlob.arrayBuffer();
+            const processed = ExifEngine.processJpegBytes(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
+            finalBlob = new Blob([processed], { type: "image/jpeg" });
+          } else if (requestedFormat === "image/png") {
+            const buf = await rawBlob.arrayBuffer();
+            const processed = ExifEngine.injectPngExif(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
+            finalBlob = new Blob([processed], { type: "image/png" });
+          } else if (requestedFormat === "image/webp") {
+            const buf = await rawBlob.arrayBuffer();
+            const processed = ExifEngine.injectWebpExif(new Uint8Array(buf), state.stripExif, state.exif, outW, outH);
+            finalBlob = new Blob([processed], { type: "image/webp" });
+          }
+        } catch (err) {
+          console.warn("EXIF 写入失败，已输出不含元数据的文件", err);
+          if (seq === encodeSeq) showToast("EXIF 写入失败，已输出不含元数据的文件：" + ((err && err.message) || err));
+        }
+
+        if (seq !== encodeSeq) return;
+        finalizeOutputBlob(finalBlob, outW, outH);
       }
 
       function finalizeOutputBlob(blob, outW, outH) {
