@@ -305,8 +305,9 @@
     .app-shell {
       display: flex;
       flex-direction: column;
+      height: 100vh; /* fallback for browsers without dynamic viewport units */
       height: 100dvh;
-      width: 100vw;
+      width: 100%;
       overflow: hidden;
     }
 
@@ -1643,6 +1644,20 @@
     }
 
     /* Respect reduced motion preferences */
+    /* Keyboard focus indicators for controls that suppress the native outline */
+    .crop-box:focus { outline: none; }
+    .crop-box:focus-visible,
+    .dropzone-card:focus-visible,
+    input[type="range"].m3-slider:focus-visible {
+      outline: 2px solid var(--md-sys-color-primary);
+      outline-offset: 3px;
+    }
+    .compare-divider:focus { outline: none; }
+    .compare-divider:focus-visible .compare-handle {
+      outline: 3px solid var(--md-sys-color-primary);
+      outline-offset: 2px;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
