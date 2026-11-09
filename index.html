@@ -4016,6 +4016,7 @@
         if (state.outputFormat === "image/bmp") {
           const imgData = ctx.getImageData(0, 0, outW, outH);
           const bmpBlob = CodecHelper.encodeBmp(imgData);
+          releaseCanvas(outCanvas);
           finalizeOutputBlob(bmpBlob, outW, outH);
           return;
         }
@@ -4027,6 +4028,8 @@
 
         const requestedFormat = state.outputFormat;
         outCanvas.toBlob(async (rawBlob) => {
+          // The encoded bytes are all we need: hand the (possibly huge) bitmap back immediately
+          releaseCanvas(outCanvas);
           if (seq !== encodeSeq) return; // A newer encode has been requested meanwhile
 
           // Browser returned null OR silently substituted PNG for an unsupported format
