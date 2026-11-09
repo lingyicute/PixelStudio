@@ -3706,7 +3706,11 @@
         els.inpResizeW.value = Math.round(state.targetW);
         els.inpResizeH.value = Math.round(state.targetH);
         const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
-        els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
+        // While the thumb is being dragged the slider is the source of truth: rewriting it from the
+        // rounded pixel size makes it jitter between steps on small crops
+        if (document.activeElement !== els.sliderScalePercent) {
+          els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
+        }
         els.scalePercentBadge.textContent = `${pct}%`;
         syncResizePresetChips();
       }
