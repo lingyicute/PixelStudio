@@ -3594,7 +3594,10 @@
         tc.height = rotH;
         const ctx = tc.getContext("2d");
         if (!ctx) {
+          releaseCanvas(tc);
           showToast("无法创建画布，可能是内存不足");
+          clearOutput();
+          setEncodePending(false);
           return;
         }
 
@@ -4073,7 +4076,13 @@
       }
 
       function generateOutputBlob() {
-        if (!state.hasImage || !state.transformedCanvas) return;
+        if (!state.hasImage) return;
+        if (!state.transformedCanvas) {
+          // The rotated bitmap could not be allocated: do not leave the UI stuck on "编码中…"
+          clearOutput();
+          setEncodePending(false);
+          return;
+        }
         const seq = ++encodeSeq;
 
         const outW = Math.max(1, Math.round(state.targetW));
