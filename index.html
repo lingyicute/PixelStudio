@@ -2330,14 +2330,13 @@
               const marker = 0xff00 | m2;
               const segLen = view.getUint16(offset + 2, false);
               if (segLen < 2) break; // corrupt segment length
-              if (marker === 0xffe1 && offset + 10 <= view.byteLength) {
+              if (marker === 0xffe1 && segLen >= 8 && offset + 10 <= view.byteLength) {
                 // Check "Exif\0\0"
                 if (
                   view.getUint32(offset + 4, false) === 0x45786966 &&
                   view.getUint16(offset + 8, false) === 0x0000
                 ) {
                   this._parseTiff(view, offset + 10, segLen - 8, result);
-                  result.hasExif = true;
                   break;
                 }
               }
@@ -2353,19 +2352,21 @@
               if (offset + 12 + length > view.byteLength) break;
               if (type === 0x65584966) { // 'eXIf'
                 this._parseTiff(view, offset + 8, length, result);
-                result.hasExif = true;
               } else if (type === 0x74455874) { // 'tEXt'
                 const chunkBytes = new Uint8Array(arrayBuffer, offset + 8, length);
                 const nullIdx = chunkBytes.indexOf(0);
                 if (nullIdx > 0) {
                   const key = this._decodeText(chunkBytes.subarray(0, nullIdx));
-                  const val = this._decodeText(chunkBytes.subarray(nullIdx + 1));
-                  if (key === "Author" || key === "Artist") result.artist = val;
-                  if (key === "Software") result.software = val;
-                  if (key === "Copyright") result.copyright = val;
-                  if (key === "Description" || key === "Comment") result.description = val;
-                  result.hasExif = true;
+                  const val = this._decodeText(chunkBytes.subarray(nullIdx + 1)).trim();
+                  if (val) {
+                    if ((key === "Author" || key === "Artist") && !result.artist) { result.artist = val; result.hasExif = true; }
+                    else if (key === "Software" && !result.software) { result.software = val; result.hasExif = true; }
+                    else if (key === "Copyright" && !result.copyright) { result.copyright = val; result.hasExif = true; }
+                    else if ((key === "Description" || key === "Comment") && !result.description) { result.description = val; result.hasExif = true; }
+                  }
                 }
+              } else if (type === 0x49454e44) { // 'IEND'
+                break;
               }
               offset += 12 + length;
             }
@@ -2382,7 +2383,6 @@
                 // Some writers prefix the payload with "Exif\0\0"
                 if (size >= 6 && view.getUint32(start, false) === 0x45786966 && view.getUint16(start + 4, false) === 0) start += 6;
                 this._parseTiff(view, start, size - (start - (offset + 8)), result);
-                result.hasExif = true;
               }
               offset += 8 + size + (size & 1);
             }
@@ -2410,6 +2410,8 @@
           if (view.getUint16(tiffStart + 2, little) !== 0x002a) return;
 
           const ifd0Offset = view.getUint32(tiffStart + 4, little);
+          if (ifd0Offset < 8 || tiffStart + ifd0Offset + 2 > limit) return;
+          out.hasExif = true;
           const pointers = this._readIfd(view, tiffStart, tiffStart + ifd0Offset, little, out, "IFD0", limit);
 
           if (pointers.exifIfd) {
@@ -2422,7 +2424,7 @@
 
         _readIfd(view, tiffStart, dirOffset, little, out, group, limit = view.byteLength) {
           const ptrs = { exifIfd: 0, gpsIfd: 0 };
-          if (dirOffset + 2 > limit) return ptrs;
+          if (dirOffset < tiffStart + 8 || dirOffset + 2 > limit) return ptrs;
           const count = view.getUint16(dirOffset, little);
           const typeSizes = [0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8];
 
@@ -2440,10 +2442,11 @@
               ? entryOffset + 8
               : tiffStart + view.getUint32(entryOffset + 8, little);
 
-            if (valOffset + byteCount > limit) continue;
+            if (valOffset < tiffStart || valOffset + byteCount > limit) continue;
             // Rational readers below consume 8 bytes per value: a writer that stored one of those
-            // tags with another type must not make us read garbage (or run off the buffer)
-            const isRational = type === 5 || type === 10;
+            // tags with another type or zero values must not make us read garbage (or run off the buffer)
+            const isRational = (type === 5 || type === 10) && numValues >= 1;
+            const isSigned = type === 10;
             const isLong = (type === 4 || type === 13) && numValues >= 1; // LONG / IFD pointer
 
             if (group === "IFD0") {
@@ -2460,49 +2463,52 @@
               if (tag === 0x9003) {
                 const taken = this._readDate(view, valOffset, numValues);
                 if (taken) out.dateTime = taken; // keep the IFD0 fallback when this one is blank
+              } else if (tag === 0x9004 && !out.dateTime) {
+                const dig = this._readDate(view, valOffset, numValues);
+                if (dig) out.dateTime = dig;
               } else if (tag === 0x829a && isRational) {
-                const r = this._readRational(view, valOffset, little);
+                const r = this._readRational(view, valOffset, little, isSigned);
                 if (r > 0) out.exposureTime = this.formatExposure(r); // significant digits: 1/32000 s must survive
               } else if (tag === 0x829d && isRational) {
-                const r = this._readRational(view, valOffset, little);
+                const r = this._readRational(view, valOffset, little, isSigned);
                 if (r > 0) out.fNumber = String(Number(r.toFixed(2)));
               } else if (tag === 0x8827) {
                 const iso = this._readUint(view, valOffset, type, numValues, little);
                 if (iso > 0) out.iso = String(iso);
-              } else if (tag === 0x8832 && out.iso === "65535") {
-                // Overflowed ISO: the true value lives in RecommendedExposureIndex
+              } else if (tag === 0x8832 && (!out.iso || out.iso === "65535")) {
+                // Overflowed or modern ISO: the value lives in RecommendedExposureIndex
                 const rei = this._readUint(view, valOffset, type, numValues, little);
-                if (rei > 65535) out.iso = String(rei);
+                if (rei > (out.iso === "65535" ? 65535 : 0)) out.iso = String(rei);
               } else if (tag === 0x920a && isRational) {
-                const r = this._readRational(view, valOffset, little);
+                const r = this._readRational(view, valOffset, little, isSigned);
                 if (r > 0) out.focalLength = String(Number(r.toFixed(1)));
               }
             } else if (group === "GPS") {
               if (tag === 0x0001) gpsLatRef = this._readAscii(view, valOffset, numValues) || "N";
               else if (tag === 0x0002 && numValues >= 3 && isRational) {
                 gpsLatArr = [
-                  this._readRational(view, valOffset, little),
-                  this._readRational(view, valOffset + 8, little),
-                  this._readRational(view, valOffset + 16, little)
+                  this._readRational(view, valOffset, little, isSigned),
+                  this._readRational(view, valOffset + 8, little, isSigned),
+                  this._readRational(view, valOffset + 16, little, isSigned)
                 ];
               } else if (tag === 0x0003) gpsLngRef = this._readAscii(view, valOffset, numValues) || "E";
               else if (tag === 0x0004 && numValues >= 3 && isRational) {
                 gpsLngArr = [
-                  this._readRational(view, valOffset, little),
-                  this._readRational(view, valOffset + 8, little),
-                  this._readRational(view, valOffset + 16, little)
+                  this._readRational(view, valOffset, little, isSigned),
+                  this._readRational(view, valOffset + 8, little, isSigned),
+                  this._readRational(view, valOffset + 16, little, isSigned)
                 ];
               }
             }
           }
 
           if (group === "GPS") {
-            if (gpsLatArr) {
+            if (gpsLatArr && gpsLatArr.every((v) => v >= 0)) {
               let deg = gpsLatArr[0] + gpsLatArr[1] / 60 + gpsLatArr[2] / 3600;
               if (gpsLatRef.toUpperCase().startsWith("S")) deg = -deg;
               if (Number.isFinite(deg) && Math.abs(deg) <= 90) out.gpsLat = String(Number(deg.toFixed(6)));
             }
-            if (gpsLngArr) {
+            if (gpsLngArr && gpsLngArr.every((v) => v >= 0)) {
               let deg = gpsLngArr[0] + gpsLngArr[1] / 60 + gpsLngArr[2] / 3600;
               if (gpsLngRef.toUpperCase().startsWith("W")) deg = -deg;
               if (Number.isFinite(deg) && Math.abs(deg) <= 180) out.gpsLng = String(Number(deg.toFixed(6)));
@@ -2550,11 +2556,11 @@
           return 0;
         },
 
-        _readRational(view, offset, little) {
-          if (offset + 8 > view.byteLength) return 0;
-          const num = view.getUint32(offset, little);
-          const den = view.getUint32(offset + 4, little);
-          return den === 0 ? 0 : num / den;
+        _readRational(view, offset, little, signed = false) {
+          if (offset + 8 > view.byteLength) return NaN;
+          const num = signed ? view.getInt32(offset, little) : view.getUint32(offset, little);
+          const den = signed ? view.getInt32(offset + 4, little) : view.getUint32(offset + 4, little);
+          return den === 0 ? NaN : num / den;
         },
 
         // Shutter speed in seconds from "0.008", "1/125", "1/125s", '2"' ... (NaN when unparsable)
@@ -2616,7 +2622,7 @@
 
           const hasDims = Boolean(dims && dims.w > 0 && dims.h > 0);
           const hasExifSub = Boolean(hasDims || dateTimeStr || fNum > 0 || expTime > 0 || isoVal > 0 || focalVal > 0);
-          const hasGpsSub = !Number.isNaN(latVal) || !Number.isNaN(lngVal);
+          const hasGpsSub = Number.isFinite(latVal) || Number.isFinite(lngVal);
 
           // Collect IFD0 entries
           const ifd0 = [];
@@ -2724,11 +2730,11 @@
               gpsIfd.push({ tag, type: 5, count: 3, data: buf });
             };
             addRaw(gpsIfd, 0x0000, 1, 4, [2, 3, 0, 0]); // GPSVersionID 2.3.0.0
-            if (!Number.isNaN(latVal)) {
+            if (Number.isFinite(latVal)) {
               addAscii(gpsIfd, 0x0001, latVal >= 0 ? "N" : "S");
               writeDms(0x0002, latVal, 90);
             }
-            if (!Number.isNaN(lngVal)) {
+            if (Number.isFinite(lngVal)) {
               addAscii(gpsIfd, 0x0003, lngVal >= 0 ? "E" : "W");
               writeDms(0x0004, lngVal, 180);
             }
@@ -2826,19 +2832,39 @@
             const m2 = jpegBytes[pos + 1];
             if (m1 !== 0xff) {
               chunks.push(jpegBytes.subarray(pos));
+              pos = jpegBytes.length;
               break;
             }
-            if (m2 === 0xda || m2 === 0xd9) {
+            if (m2 === 0xff) {
+              chunks.push(jpegBytes.subarray(pos, pos + 1));
+              pos += 1;
+              continue;
+            }
+            if (m2 === 0xda || m2 === 0xd9 || m2 === 0x00) {
               chunks.push(jpegBytes.subarray(pos));
+              pos = jpegBytes.length;
               break;
+            }
+            if (m2 === 0x01 || (m2 >= 0xd0 && m2 <= 0xd7)) {
+              chunks.push(jpegBytes.subarray(pos, pos + 2));
+              pos += 2;
+              continue;
             }
             const segLen = (jpegBytes[pos + 2] << 8) | jpegBytes[pos + 3];
             const nextPos = pos + 2 + segLen;
+            if (segLen < 2 || nextPos > jpegBytes.length) {
+              chunks.push(jpegBytes.subarray(pos));
+              pos = jpegBytes.length;
+              break;
+            }
             // Skip existing APP1 (0xE1) if we are stripping or replacing EXIF
             if (m2 !== 0xe1) {
               chunks.push(jpegBytes.subarray(pos, nextPos));
             }
             pos = nextPos;
+          }
+          if (pos < jpegBytes.length) {
+            chunks.push(jpegBytes.subarray(pos));
           }
 
           if (!stripExif) {
@@ -2903,7 +2929,7 @@
           let pos = 12;
           while (pos + 8 <= webpBytes.length) {
             const fourcc = tag(pos);
-            const size = webpBytes[pos + 4] | (webpBytes[pos + 5] << 8) | (webpBytes[pos + 6] << 16) | (webpBytes[pos + 7] << 24);
+            const size = (webpBytes[pos + 4] | (webpBytes[pos + 5] << 8) | (webpBytes[pos + 6] << 16) | (webpBytes[pos + 7] << 24)) >>> 0;
             const padded = size + (size & 1);
             if (pos + 8 + size > webpBytes.length) break;
             chunks.push({ fourcc, payload: webpBytes.subarray(pos + 8, pos + 8 + size) });
