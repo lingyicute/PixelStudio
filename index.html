@@ -3021,6 +3021,7 @@
         lockAspect: true,
         resampleQuality: "high",
         resizeScale: 1, // Exact output/crop scale factor (slider is only a rounded view of it)
+        resizeScaleY: null, // Only set when the aspect lock is off and H was scaled independently of W
 
         // EXIF
         stripExif: false,
@@ -3375,6 +3376,7 @@
         state.flipV = false;
         state.cropRatio = "free";
         state.lockAspect = true;
+        state.resizeScaleY = null;
         state.stripExif = false;
 
         // Leave comparison mode when a new image arrives (stale "after" preview otherwise)
@@ -3475,6 +3477,7 @@
           state.targetW = rotW;
           state.targetH = rotH;
           state.resizeScale = 1;
+          state.resizeScaleY = null;
           els.sliderScalePercent.value = 100;
           els.scalePercentBadge.textContent = "100%";
         } else {
@@ -3515,6 +3518,12 @@
           const tw = state.targetW;
           state.targetW = state.targetH;
           state.targetH = tw;
+          if (state.resizeScaleY) {
+            // Width and height trade places on screen, so do their independent scale factors
+            const sx = state.resizeScale;
+            state.resizeScale = state.resizeScaleY;
+            state.resizeScaleY = sx;
+          }
           // A fixed ratio flips orientation with the picture (4:3 -> 3:4); fall back to free if no such preset
           const r = state.cropRatio;
           if (r !== "free" && r !== "original") {
@@ -3536,13 +3545,17 @@
         els.resizeSourceInfo.textContent = `当前裁剪区域: ${Math.round(state.cropW)} × ${Math.round(state.cropH)} px`;
       }
 
-      function syncResizeFromCrop(scaleFactor = null) {
+      // keepStretch: the crop changed but the user's scale did not, so an unlocked (non-uniform)
+      // width/height ratio must survive instead of snapping back to the crop's own aspect.
+      function syncResizeFromCrop(scaleFactor = null, keepStretch = false) {
         const cw = Math.max(1, Math.round(state.cropW));
         const ch = Math.max(1, Math.round(state.cropH));
         if (scaleFactor !== null) {
+          const scaleY = keepStretch && !state.lockAspect && state.resizeScaleY ? state.resizeScaleY : scaleFactor;
+          if (scaleY === scaleFactor) state.resizeScaleY = null;
           state.resizeScale = scaleFactor;
           state.targetW = Math.max(1, Math.round(cw * scaleFactor));
-          state.targetH = Math.max(1, Math.round(ch * scaleFactor));
+          state.targetH = Math.max(1, Math.round(ch * scaleY));
         } else if (state.lockAspect) {
           const aspect = cw / ch;
           state.targetH = Math.max(1, Math.round(state.targetW / aspect));
@@ -3683,7 +3696,7 @@
         y = Math.max(0, Math.min(state.rotH - h, Math.round(y)));
         state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
         syncCropInputs();
-        syncResizeFromCrop(state.resizeScale);
+        syncResizeFromCrop(state.resizeScale, true);
         updateCropBoxVisual();
         scheduleOutputEncode();
       });
@@ -3783,7 +3796,7 @@
 
         syncCropInputs();
         const currentScale = state.resizeScale;
-        syncResizeFromCrop(currentScale);
+        syncResizeFromCrop(currentScale, true);
         updateCropBoxVisual();
       });
 
@@ -3817,7 +3830,7 @@
 
         syncCropInputs();
         const currentScale = state.resizeScale;
-        syncResizeFromCrop(currentScale);
+        syncResizeFromCrop(currentScale, true);
         updateCropBoxVisual();
         scheduleOutputEncode();
       }
@@ -4444,7 +4457,7 @@
           }
           syncCropInputs();
           const currentScale = state.resizeScale;
-          syncResizeFromCrop(currentScale);
+          syncResizeFromCrop(currentScale, true);
           updateCropBoxVisual();
           scheduleOutputEncode();
         };
@@ -4482,6 +4495,7 @@
         // 6. Resize Controls
         els.btnLockAspect.addEventListener("click", () => {
           state.lockAspect = !state.lockAspect;
+          if (state.lockAspect) state.resizeScaleY = null;
           els.btnLockAspect.classList.toggle("active", state.lockAspect);
           els.iconLockClosed.style.display = state.lockAspect ? "block" : "none";
           els.iconLockOpen.style.display = state.lockAspect ? "none" : "block";
@@ -4489,6 +4503,7 @@
 
         const afterManualResize = () => {
           state.resizeScale = state.targetW / Math.max(1, state.cropW);
+          state.resizeScaleY = state.lockAspect ? null : state.targetH / Math.max(1, state.cropH);
           const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
           els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
           els.scalePercentBadge.textContent = `${pct}%`;
