@@ -2012,7 +2012,7 @@
                   <span>按百分比缩放</span>
                   <span class="slider-value-pill" id="scalePercentBadge">100%</span>
                 </div>
-                <input type="range" class="m3-slider" id="sliderScalePercent" min="10" max="200" step="5" value="100" />
+                <input type="range" class="m3-slider" id="sliderScalePercent" aria-label="按百分比缩放" min="10" max="200" step="5" value="100" />
               </div>
 
               <!-- Quick Scale Presets -->
@@ -2194,7 +2194,7 @@
                   <button class="matte-swatch active" data-matte="#ffffff" style="background:#ffffff" title="纯白背景"></button>
                   <button class="matte-swatch" data-matte="#000000" style="background:#000000" title="纯黑背景"></button>
                   <button class="matte-swatch" data-matte="#f3f4f6" style="background:#f3f4f6" title="浅灰背景"></button>
-                  <input type="color" id="inpMatteColor" value="#ffffff" title="自定义背景色" style="width:24px;height:24px;border:none;background:none;cursor:pointer;padding:0;" />
+                  <input type="color" id="inpMatteColor" value="#ffffff" title="自定义背景色" aria-label="自定义背景色" style="width:24px;height:24px;border:none;background:none;cursor:pointer;padding:0;" />
                 </div>
               </div>
 
@@ -2220,7 +2220,7 @@
                     <span class="slider-value-pill" id="compressionRateLabel">压缩 20% · 画质 80%</span>
                   </div>
                 </div>
-                <input type="range" class="m3-slider" id="sliderCompression" min="1" max="95" step="1" value="20" />
+                <input type="range" class="m3-slider" id="sliderCompression" aria-label="压缩率" min="1" max="95" step="1" value="20" />
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;">
                   <div class="chip-group" id="compressionPresets">
                     <button class="m3-chip" data-comp="5">轻度 5%</button>
@@ -2229,7 +2229,7 @@
                     <button class="m3-chip" data-comp="70">极限 70%</button>
                   </div>
                   <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-                    <input type="number" id="inpCompressionExact" min="1" max="99" value="20" style="width:52px;height:30px;border-radius:8px;border:1px solid var(--md-sys-color-outline);background:var(--md-sys-color-surface-container-lowest);text-align:center;font-family:var(--font-mono);font-size:12px;font-weight:700;" />
+                    <input type="number" id="inpCompressionExact" aria-label="精确压缩率 (%)" min="1" max="99" value="20" style="width:52px;height:30px;border-radius:8px;border:1px solid var(--md-sys-color-outline);background:var(--md-sys-color-surface-container-lowest);text-align:center;font-family:var(--font-mono);font-size:12px;font-weight:700;" />
                     <span style="font-size:12px;font-weight:600;">%</span>
                   </div>
                 </div>
