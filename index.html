@@ -3735,14 +3735,23 @@
         const cw = Math.max(1, Math.round(state.cropW));
         const ch = Math.max(1, Math.round(state.cropH));
         if (scaleFactor !== null) {
-          const scaleY = keepStretch && !state.lockAspect && state.resizeScaleY ? state.resizeScaleY : scaleFactor;
-          if (scaleY === scaleFactor) state.resizeScaleY = null;
-          state.resizeScale = scaleFactor;
-          state.targetW = Math.max(1, Math.round(cw * scaleFactor));
-          state.targetH = Math.max(1, Math.round(ch * scaleY));
+          let sx = scaleFactor;
+          let sy = keepStretch && !state.lockAspect && state.resizeScaleY ? state.resizeScaleY : scaleFactor;
+          if (sy === sx) state.resizeScaleY = null;
+          if (state.lockAspect || sy === sx) {
+            const maxUniform = Math.min(MAX_CANVAS_SIDE / cw, MAX_CANVAS_SIDE / ch);
+            if (sx > maxUniform) sx = sy = maxUniform;
+          } else {
+            sx = Math.min(sx, MAX_CANVAS_SIDE / cw);
+            sy = Math.min(sy, MAX_CANVAS_SIDE / ch);
+            state.resizeScaleY = sy;
+          }
+          state.resizeScale = sx;
+          state.targetW = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(cw * sx)));
+          state.targetH = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(ch * sy)));
         } else if (state.lockAspect) {
           const aspect = cw / ch;
-          state.targetH = Math.max(1, Math.round(state.targetW / aspect));
+          state.targetH = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(state.targetW / aspect)));
         }
         syncResizeInputs();
       }
@@ -3762,11 +3771,20 @@
 
       // Highlight the preset chip that matches the current scale / width (if any)
       function syncResizePresetChips() {
-        const scale = state.targetW / Math.max(1, state.cropW);
+        const cw = Math.max(1, state.cropW);
+        const ch = Math.max(1, state.cropH);
+        const scaleX = state.targetW / cw;
+        const scaleY = state.targetH / ch;
         document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => {
           let match = false;
-          if (c.dataset.scale) match = Math.abs(parseFloat(c.dataset.scale) - scale) < 0.005;
-          else if (c.dataset.maxw) match = parseInt(c.dataset.maxw, 10) === Math.round(state.targetW);
+          if (c.dataset.scale) {
+            const s = parseFloat(c.dataset.scale);
+            match = Math.abs(s - scaleX) < 0.005 && Math.abs(s - scaleY) < 0.005;
+          } else if (c.dataset.maxw) {
+            const mw = parseInt(c.dataset.maxw, 10);
+            const expectedH = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(ch * (mw / cw))));
+            match = Math.round(state.targetW) === mw && Math.round(state.targetH) === expectedH;
+          }
           c.classList.toggle("active", match);
         });
       }
@@ -4836,10 +4854,20 @@
             state.resizeScaleY = null;
             // Locking again must bring a stretched output back to the crop's own aspect ratio
             if (state.hasImage && state.cropW > 0 && state.cropH > 0) {
-              const h = Math.max(1, Math.round(state.targetW * (Math.round(state.cropH) / Math.max(1, Math.round(state.cropW)))));
-              if (h !== Math.round(state.targetH)) {
+              const cw = Math.max(1, Math.round(state.cropW));
+              const ch = Math.max(1, Math.round(state.cropH));
+              let w = Math.round(state.targetW);
+              let h = Math.max(1, Math.round(w * (ch / cw)));
+              if (h > MAX_CANVAS_SIDE) {
+                h = MAX_CANVAS_SIDE;
+                w = Math.max(1, Math.round(h * (cw / ch)));
+              }
+              if (h !== Math.round(state.targetH) || w !== Math.round(state.targetW)) {
+                state.targetW = w;
                 state.targetH = h;
+                state.resizeScale = w / cw;
                 syncResizeInputs();
+                if (state.compareMode) renderStageCanvas();
                 scheduleOutputEncode();
               }
             }
@@ -4857,45 +4885,61 @@
           els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
           els.scalePercentBadge.textContent = `${pct}%`;
           syncResizePresetChips();
+          if (state.compareMode) renderStageCanvas();
           scheduleOutputEncode();
         };
 
         els.inpResizeW.addEventListener("input", () => {
+          if (!state.hasImage) return;
           const raw = parseInt(els.inpResizeW.value, 10);
           if (!Number.isFinite(raw)) return; // Field temporarily empty while typing
-          const w = Math.max(1, Math.min(16384, raw));
-          state.targetW = w;
-          if (state.lockAspect && state.cropW > 0) {
-            state.targetH = Math.max(1, Math.round(w * (state.cropH / state.cropW)));
-            els.inpResizeH.value = state.targetH;
+          let w = Math.max(1, Math.min(MAX_CANVAS_SIDE, raw));
+          if (state.lockAspect && state.cropW > 0 && state.cropH > 0) {
+            let h = Math.max(1, Math.round(w * (state.cropH / state.cropW)));
+            if (h > MAX_CANVAS_SIDE) {
+              h = MAX_CANVAS_SIDE;
+              w = Math.max(1, Math.round(h * (state.cropW / state.cropH)));
+            }
+            state.targetH = h;
+            els.inpResizeH.value = h;
           }
+          state.targetW = w;
           afterManualResize();
         });
 
         els.inpResizeH.addEventListener("input", () => {
+          if (!state.hasImage) return;
           const raw = parseInt(els.inpResizeH.value, 10);
           if (!Number.isFinite(raw)) return;
-          const h = Math.max(1, Math.min(16384, raw));
-          state.targetH = h;
-          if (state.lockAspect && state.cropH > 0) {
-            state.targetW = Math.max(1, Math.round(h * (state.cropW / state.cropH)));
-            els.inpResizeW.value = state.targetW;
+          let h = Math.max(1, Math.min(MAX_CANVAS_SIDE, raw));
+          if (state.lockAspect && state.cropH > 0 && state.cropW > 0) {
+            let w = Math.max(1, Math.round(h * (state.cropW / state.cropH)));
+            if (w > MAX_CANVAS_SIDE) {
+              w = MAX_CANVAS_SIDE;
+              h = Math.max(1, Math.round(w * (state.cropH / state.cropW)));
+            }
+            state.targetW = w;
+            els.inpResizeW.value = w;
           }
+          state.targetH = h;
           afterManualResize();
         });
 
         // Normalize out-of-range / empty values once editing is finished
         [els.inpResizeW, els.inpResizeH].forEach((inp) => {
           inp.addEventListener("change", () => {
+            if (!state.hasImage) return;
             els.inpResizeW.value = Math.round(state.targetW);
             els.inpResizeH.value = Math.round(state.targetH);
           });
         });
 
         els.sliderScalePercent.addEventListener("input", () => {
+          if (!state.hasImage) return;
           const pct = parseInt(els.sliderScalePercent.value, 10) || 100;
           els.scalePercentBadge.textContent = `${pct}%`;
           syncResizeFromCrop(pct / 100);
+          if (state.compareMode) renderStageCanvas();
           scheduleOutputEncode();
         });
 
@@ -4912,6 +4956,7 @@
               const s = targetW / Math.max(1, state.cropW);
               syncResizeFromCrop(s);
             }
+            if (state.compareMode) renderStageCanvas();
             scheduleOutputEncode();
           });
         });
@@ -4919,6 +4964,7 @@
         $("btnResetResize").addEventListener("click", () => {
           if (!state.hasImage) return;
           syncResizeFromCrop(1);
+          if (state.compareMode) renderStageCanvas();
           scheduleOutputEncode();
         });
 
