@@ -3870,7 +3870,7 @@
         e.stopPropagation();
         const handle = e.target.closest(".crop-handle");
         const dir = handle ? handle.dataset.dir : "move";
-        els.cropBox.setPointerCapture(e.pointerId);
+        try { els.cropBox.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
         els.cropBox.focus({ preventScroll: true }); // pointerdown is default-prevented, so focus manually for arrow-key nudging
 
         cropDragState = {
@@ -4365,10 +4365,10 @@
 
       let compareDragPointer = null;
       els.compareDivider.addEventListener("pointerdown", (e) => {
-        if (e.pointerType === "mouse" && e.button !== 0) return; // right / middle click must not start a drag
+        if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return; // right / middle click and extra touches must not start a drag
         e.preventDefault();
         compareDragPointer = e.pointerId;
-        els.compareDivider.setPointerCapture(e.pointerId);
+        try { els.compareDivider.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
       });
       window.addEventListener("pointermove", (e) => {
         if (compareDragPointer === null || e.pointerId !== compareDragPointer) return;
