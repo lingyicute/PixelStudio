@@ -1912,7 +1912,7 @@
                   <button class="m3-chip" data-ratio="16:9">16:9 宽屏</button>
                   <button class="m3-chip" data-ratio="9:16">9:16 竖屏</button>
                   <button class="m3-chip" data-ratio="3:4">3:4 竖版</button>
-              <button class="m3-chip" data-ratio="2:3">2:3 海报</button>
+                  <button class="m3-chip" data-ratio="2:3">2:3 海报</button>
                 </div>
               </div>
 
@@ -4898,8 +4898,19 @@
         ro.observe(els.canvasViewport);
       }
 
+      // Mirror the visual "active" state of chip / segmented / swatch toggles to assistive tech
+      function bindPressedState() {
+        const sync = (el) => el.setAttribute("aria-pressed", String(el.classList.contains("active")));
+        const observer = new MutationObserver((records) => records.forEach((r) => sync(r.target)));
+        document.querySelectorAll(".m3-chip, .segmented-btn, .matte-swatch").forEach((el) => {
+          sync(el);
+          observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+        });
+      }
+
       // Initialize application
       bindEvents();
+      bindPressedState();
     })();
   </script>
 </body>
