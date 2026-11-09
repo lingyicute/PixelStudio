@@ -4581,6 +4581,19 @@
           });
         });
 
+        // Coordinates outside the valid range used to be clamped silently on export: fix them visibly
+        [[els.exifGpsLat, 90, "纬度"], [els.exifGpsLng, 180, "经度"]].forEach(([inp, limit, name]) => {
+          inp.addEventListener("change", () => {
+            const v = parseFloat(inp.value);
+            if (Number.isFinite(v) && Math.abs(v) > limit) {
+              inp.value = String(Math.sign(v) * limit);
+              readExifFromInputs();
+              scheduleOutputEncode();
+              showToast(`${name}应在 -${limit} 到 ${limit} 之间，已调整为 ${inp.value}`);
+            }
+          });
+        });
+
         // Accept "1/125" style shutter speeds; normalize to a canonical text once editing is done
         els.exifExposure.addEventListener("change", () => {
           const raw = els.exifExposure.value.trim();
