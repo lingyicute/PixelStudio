@@ -3137,6 +3137,7 @@
         formatTouched: false,     // The user picked an output format themselves
         modeTouched: false,       // The user picked lossy / lossless themselves
         autoFormatApplied: false, // The default output format was already matched to the first image
+        autoLosslessForPng: false, // Lossless was switched on automatically for a PNG input (undone when leaving PNG)
 
         // Live Output Cache
         outputBlob: null,
@@ -3573,6 +3574,7 @@
         if (!btn) return;
         btn.click();
         if (target === "image/png" && !state.modeTouched && state.compressionMode !== "lossless") {
+          state.autoLosslessForPng = true;
           document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
         }
       }
@@ -4982,6 +4984,12 @@
               // Leaving BMP: give the user back the mode that was forced off
               setCompressionMode(state.modeBeforeBmp);
               state.modeBeforeBmp = null;
+            }
+            // Lossless was only auto-selected for a PNG input: switching to JPEG / WebP must not keep
+            // exporting 100%-quality (huge) files the user never asked for
+            if (state.autoLosslessForPng && !state.modeTouched && state.outputFormat !== "image/png" && state.outputFormat !== "image/bmp") {
+              state.autoLosslessForPng = false;
+              setCompressionMode("lossy");
             }
             updateCompressionBannerText();
             updateExifFormatNote();
