@@ -3207,7 +3207,15 @@
           val /= 1024;
           i++;
         }
-        return `${val < 10 && i > 0 ? val.toFixed(2) : val.toFixed(1)} ${units[i]}`;
+        if (i === 0) return `${Math.round(val)} B`;
+        let text = val < 10 ? val.toFixed(2) : val.toFixed(1);
+        // 1023.96 KB would print as "1024.0 KB": carry it into the next unit instead
+        if (parseFloat(text) >= 1024 && i < units.length - 1) {
+          val /= 1024;
+          i++;
+          text = val.toFixed(2);
+        }
+        return `${text} ${units[i]}`;
       }
 
       function getNowExifDate() {
