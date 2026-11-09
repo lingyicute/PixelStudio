@@ -2395,26 +2395,29 @@
         },
 
         _parseTiffUnsafe(view, tiffStart, maxLen, out) {
-          if (tiffStart + 8 > view.byteLength) return;
+          // Never read past the end of this EXIF block (JPEG APP1 segment / PNG chunk / WebP chunk):
+          // the bytes after it belong to other segments and would be decoded as garbage tags
+          const limit = Math.min(view.byteLength, tiffStart + Math.max(0, maxLen));
+          if (tiffStart + 8 > limit) return;
           const endian = view.getUint16(tiffStart, false);
           const little = endian === 0x4949; // 'II'
           if (!little && endian !== 0x4d4d) return;
           if (view.getUint16(tiffStart + 2, little) !== 0x002a) return;
 
           const ifd0Offset = view.getUint32(tiffStart + 4, little);
-          const pointers = this._readIfd(view, tiffStart, tiffStart + ifd0Offset, little, out, "IFD0");
+          const pointers = this._readIfd(view, tiffStart, tiffStart + ifd0Offset, little, out, "IFD0", limit);
 
           if (pointers.exifIfd) {
-            this._readIfd(view, tiffStart, tiffStart + pointers.exifIfd, little, out, "EXIF");
+            this._readIfd(view, tiffStart, tiffStart + pointers.exifIfd, little, out, "EXIF", limit);
           }
           if (pointers.gpsIfd) {
-            this._readIfd(view, tiffStart, tiffStart + pointers.gpsIfd, little, out, "GPS");
+            this._readIfd(view, tiffStart, tiffStart + pointers.gpsIfd, little, out, "GPS", limit);
           }
         },
 
-        _readIfd(view, tiffStart, dirOffset, little, out, group) {
+        _readIfd(view, tiffStart, dirOffset, little, out, group, limit = view.byteLength) {
           const ptrs = { exifIfd: 0, gpsIfd: 0 };
-          if (dirOffset + 2 > view.byteLength) return ptrs;
+          if (dirOffset + 2 > limit) return ptrs;
           const count = view.getUint16(dirOffset, little);
           const typeSizes = [0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8];
 
@@ -2423,7 +2426,7 @@
 
           for (let i = 0; i < count; i++) {
             const entryOffset = dirOffset + 2 + i * 12;
-            if (entryOffset + 12 > view.byteLength) break;
+            if (entryOffset + 12 > limit) break;
             const tag = view.getUint16(entryOffset, little);
             const type = view.getUint16(entryOffset + 2, little);
             const numValues = view.getUint32(entryOffset + 4, little);
@@ -2432,10 +2435,11 @@
               ? entryOffset + 8
               : tiffStart + view.getUint32(entryOffset + 8, little);
 
-            if (valOffset + byteCount > view.byteLength) continue;
+            if (valOffset + byteCount > limit) continue;
             // Rational readers below consume 8 bytes per value: a writer that stored one of those
             // tags with another type must not make us read garbage (or run off the buffer)
             const isRational = type === 5 || type === 10;
+            const isLong = (type === 4 || type === 13) && numValues >= 1; // LONG / IFD pointer
 
             if (group === "IFD0") {
               if (tag === 0x010f) out.make = this._readAscii(view, valOffset, numValues);
@@ -2445,8 +2449,8 @@
               else if (tag === 0x013b) out.artist = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x8298) out.copyright = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x010e) out.description = this._readAscii(view, valOffset, numValues);
-              else if (tag === 0x8769) ptrs.exifIfd = view.getUint32(valOffset, little);
-              else if (tag === 0x8825) ptrs.gpsIfd = view.getUint32(valOffset, little);
+              else if (tag === 0x8769 && isLong) ptrs.exifIfd = view.getUint32(valOffset, little);
+              else if (tag === 0x8825 && isLong) ptrs.gpsIfd = view.getUint32(valOffset, little);
             } else if (group === "EXIF") {
               if (tag === 0x9003) {
                 const taken = this._readDate(view, valOffset, numValues);
@@ -2458,11 +2462,11 @@
                 const r = this._readRational(view, valOffset, little);
                 if (r > 0) out.fNumber = String(Number(r.toFixed(2)));
               } else if (tag === 0x8827) {
-                const iso = type === 3 ? view.getUint16(valOffset, little) : view.getUint32(valOffset, little);
+                const iso = this._readUint(view, valOffset, type, numValues, little);
                 if (iso > 0) out.iso = String(iso);
               } else if (tag === 0x8832 && out.iso === "65535") {
                 // Overflowed ISO: the true value lives in RecommendedExposureIndex
-                const rei = type === 3 ? view.getUint16(valOffset, little) : view.getUint32(valOffset, little);
+                const rei = this._readUint(view, valOffset, type, numValues, little);
                 if (rei > 65535) out.iso = String(rei);
               } else if (tag === 0x920a && isRational) {
                 const r = this._readRational(view, valOffset, little);
@@ -2531,6 +2535,14 @@
         // such placeholders would only show up as garbage in the form, so read them as empty
         _readDate(view, offset, len) {
           return this.normalizeDate(this._readAscii(view, offset, len));
+        },
+
+        // First value of a SHORT / LONG entry; 0 for any other type so a mistyped tag cannot read garbage
+        _readUint(view, offset, type, numValues, little) {
+          if (numValues < 1) return 0;
+          if (type === 3) return view.getUint16(offset, little);
+          if (type === 4) return view.getUint32(offset, little);
+          return 0;
         },
 
         _readRational(view, offset, little) {
