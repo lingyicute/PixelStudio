@@ -4159,7 +4159,11 @@
         function applySeed(seed) {
           if (seed === "teal") document.documentElement.removeAttribute("data-seed");
           else document.documentElement.setAttribute("data-seed", seed);
-          document.querySelectorAll(".seed-dot").forEach((d) => d.classList.toggle("active", d.dataset.seed === seed));
+          document.querySelectorAll(".seed-dot").forEach((d) => {
+            const on = d.dataset.seed === seed;
+            d.classList.toggle("active", on);
+            d.setAttribute("aria-pressed", String(on));
+          });
           syncThemeColorMeta();
         }
 
@@ -4173,7 +4177,7 @@
 
         const prefs = readPrefs();
         applyTheme(typeof prefs.dark === "boolean" ? prefs.dark : Boolean(darkMql && darkMql.matches));
-        if (prefs.seed && SEED_HEX[prefs.seed]) applySeed(prefs.seed);
+        applySeed(prefs.seed && SEED_HEX[prefs.seed] ? prefs.seed : "teal");
 
         // React to OS theme changes while the user has not chosen manually
         if (darkMql && typeof darkMql.addEventListener === "function") {
