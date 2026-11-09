@@ -3041,7 +3041,10 @@
           const imgData = ctx.getImageData(0, 0, width, height);
           const d = imgData.data;
           const bayer = this._bayer4;
-          const ditherAmp = step * 0.9;
+          // Ordered dithering hides banding but is pure high-frequency noise to DEFLATE: at full strength
+          // it made the "lossy" PNG several times LARGER than the lossless one. Only the coarse levels
+          // (strong banding) get a gentle dither; from 24 levels up the plain quantization is used.
+          const ditherAmp = levels >= 24 ? 0 : step * 0.3 * ((24 - levels) / 20);
 
           // Pre-compute per-pixel-position dither LUTs (16 positions × 256 values)
           const luts = new Array(16);
