@@ -3149,7 +3149,7 @@
 
       let loadToken = 0; // Only the most recently requested image may initialise the workspace
 
-      async function loadImageFromFile(file) {
+      async function loadImageFromFile(file, onLoaded) {
         const looksLikeImage = file && (
           (file.type && file.type.startsWith("image/")) ||
           /\.(jpe?g|png|webp|gif|bmp|avif|svg|heic|heif|tiff?)$/i.test(file.name || "")
@@ -3180,6 +3180,8 @@
               showToast("无法获取图片尺寸（可能是无固有尺寸的 SVG），请换一张图片");
               return;
             }
+            // Runs before init so that a downscale warning raised by init is not overwritten
+            if (typeof onLoaded === "function") onLoaded();
             initWorkspaceWithImage(img, {
               fileName: file.name,
               fileSize: file.size,
@@ -4236,8 +4238,7 @@
             if (item.type.startsWith("image/")) {
               const file = item.getAsFile();
               if (file) {
-                loadImageFromFile(file);
-                showToast("已从剪贴板粘贴图片");
+                loadImageFromFile(file, () => showToast("已从剪贴板粘贴图片"));
                 break;
               }
             }
