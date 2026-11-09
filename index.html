@@ -545,6 +545,17 @@
       transition: border-color 0.2s, transform 0.2s var(--motion-spring), background-color 0.2s;
       z-index: 10;
     }
+    /* Drop feedback while an image is already open (the empty-state card is hidden then) */
+    .canvas-viewport.drag-over::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border: 3px dashed var(--md-sys-color-primary);
+      border-radius: var(--radius-xl);
+      background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+      pointer-events: none;
+      z-index: 30;
+    }
     .dropzone-card.drag-over {
       border-color: var(--md-sys-color-primary);
       background: var(--md-sys-color-primary-container);
@@ -4176,6 +4187,17 @@
           if (e.target.closest("button")) return;
           els.fileInput.click();
         });
+        // Keyboard users can reach and activate the card as well
+        els.dropzoneCard.setAttribute("role", "button");
+        els.dropzoneCard.setAttribute("tabindex", "0");
+        els.dropzoneCard.setAttribute("aria-label", "选择本地图片");
+        els.dropzoneCard.addEventListener("keydown", (e) => {
+          if (e.target !== els.dropzoneCard) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            els.fileInput.click();
+          }
+        });
 
         els.fileInput.addEventListener("change", (e) => {
           if (e.target.files && e.target.files[0]) {
@@ -4185,21 +4207,23 @@
         });
 
         // Only react to file drags so text can still be dragged into the EXIF inputs
+        const setDragOver = (on) => {
+          els.dropzoneCard.classList.toggle("drag-over", on);
+          els.canvasViewport.classList.toggle("drag-over", on);
+        };
         const hasFiles = (e) => Boolean(e.dataTransfer) && Array.from(e.dataTransfer.types || []).includes("Files");
         window.addEventListener("dragover", (e) => {
           if (!hasFiles(e)) return;
           e.preventDefault();
-          els.dropzoneCard.classList.add("drag-over");
+          setDragOver(true);
         });
         window.addEventListener("dragleave", (e) => {
-          if (e.relatedTarget === null) {
-            els.dropzoneCard.classList.remove("drag-over");
-          }
+          if (e.relatedTarget === null) setDragOver(false);
         });
         window.addEventListener("drop", (e) => {
           if (!hasFiles(e)) return;
           e.preventDefault();
-          els.dropzoneCard.classList.remove("drag-over");
+          setDragOver(false);
           if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
             loadImageFromFile(e.dataTransfer.files[0]);
           }
