@@ -2549,11 +2549,12 @@
           return String(Number(seconds.toPrecision(6)));
         },
 
-        // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants, drop anything unparsable
+        // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants (incl. ISO 8601 with fractional
+         // seconds / zone suffix, whose wall-clock part is kept as is), drop anything unparsable
         normalizeDate(raw) {
           const s = (raw || "").trim();
           if (!s) return "";
-          const m = s.match(/^(\d{4})[-:/.](\d{1,2})[-:/.](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+          const m = s.match(/^(\d{4})[-:/.](\d{1,2})[-:/.](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?\s*(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/i);
           if (!m) return "";
           const p = (v) => String(v || "0").padStart(2, "0");
           const y = +m[1], mo = +m[2], d = +m[3], h = +(m[4] || 0), mi = +m[5] || 0, se = +(m[6] || 0);
