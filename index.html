@@ -2276,7 +2276,6 @@
           // Check PNG Signature: 89 50 4E 47 0D 0A 1A 0A
           else if (view.getUint32(0, false) === 0x89504e47 && view.getUint32(4, false) === 0x0d0a1a0a) {
             let offset = 8;
-            const decoder = new TextDecoder("utf-8");
             while (offset + 12 <= view.byteLength) {
               const length = view.getUint32(offset, false);
               const type = view.getUint32(offset + 4, false);
@@ -2288,8 +2287,8 @@
                 const chunkBytes = new Uint8Array(arrayBuffer, offset + 8, length);
                 const nullIdx = chunkBytes.indexOf(0);
                 if (nullIdx > 0) {
-                  const key = decoder.decode(chunkBytes.subarray(0, nullIdx));
-                  const val = decoder.decode(chunkBytes.subarray(nullIdx + 1));
+                  const key = this._decodeText(chunkBytes.subarray(0, nullIdx));
+                  const val = this._decodeText(chunkBytes.subarray(nullIdx + 1));
                   if (key === "Author" || key === "Artist") result.artist = val;
                   if (key === "Software") result.software = val;
                   if (key === "Copyright") result.copyright = val;
@@ -2421,16 +2420,26 @@
         },
 
         _readAscii(view, offset, len) {
-          const bytes = [];
-          for (let i = 0; i < len; i++) {
-            const b = view.getUint8(offset + i);
+          const end = Math.min(view.byteLength, offset + len);
+          const bytes = new Uint8Array(Math.max(0, end - offset));
+          let n = 0;
+          for (let i = offset; i < end; i++) {
+            const b = view.getUint8(i);
             if (b === 0) break;
-            bytes.push(b);
+            bytes[n++] = b;
           }
+          return this._decodeText(bytes.subarray(0, n)).trim();
+        },
+
+        // Prefer UTF-8, but many cameras / older tools write Latin-1; a non-fatal UTF-8 decode would
+        // silently turn those bytes into U+FFFD, so fall back to a byte-per-char decode instead.
+        _decodeText(bytes) {
           try {
-            return new TextDecoder("utf-8").decode(new Uint8Array(bytes)).trim();
+            return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
           } catch {
-            return String.fromCharCode(...bytes).trim();
+            let s = "";
+            for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+            return s;
           }
         },
 
