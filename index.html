@@ -2012,7 +2012,7 @@
                   </div>
                   <div>
                     <h2 class="card-title">修改 EXIF 元数据</h2>
-                    <p class="card-subtitle" id="exifStatusSubtitle">支持读写 JPEG 二进制 APP1 EXIF 标签</p>
+                    <p class="card-subtitle" id="exifStatusSubtitle">支持读写 JPEG / PNG / WebP 的 EXIF 标签</p>
                   </div>
                 </div>
               </div>
@@ -2028,6 +2028,14 @@
                   <span class="m3-switch-track"></span>
                   <span class="m3-switch-thumb"></span>
                 </label>
+              </div>
+
+              <!-- Shown when the chosen export format cannot carry EXIF at all (BMP / AVIF) -->
+              <div id="exifFormatNote" class="m3-banner warning" style="display:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span id="exifFormatNoteText"></span>
               </div>
 
               <div id="exifFormFields" style="display:flex;flex-direction:column;gap:10px;">
@@ -3046,6 +3054,8 @@
         // EXIF inputs
         chkStripExif: $("chkStripExif"),
         exifFormFields: $("exifFormFields"),
+        exifFormatNote: $("exifFormatNote"),
+        exifFormatNoteText: $("exifFormatNoteText"),
         exifStatusSubtitle: $("exifStatusSubtitle"),
         exifMake: $("exifMake"),
         exifModel: $("exifModel"),
@@ -4553,9 +4563,20 @@
               state.modeBeforeBmp = null;
             }
             updateCompressionBannerText();
+            updateExifFormatNote();
             scheduleOutputEncode();
           });
         });
+
+        // BMP and AVIF exports are written without any metadata: say so instead of dropping edits silently
+        function updateExifFormatNote() {
+          const unsupported = state.outputFormat === "image/bmp" || state.outputFormat === "image/avif";
+          els.exifFormatNote.style.display = unsupported ? "flex" : "none";
+          if (unsupported) {
+            const name = state.outputFormat === "image/bmp" ? "BMP" : "AVIF";
+            els.exifFormatNoteText.textContent = `当前导出格式 ${name} 无法写入 EXIF，下方修改不会出现在导出文件中；请在“格式压缩”中切换为 JPEG / PNG / WebP。`;
+          }
+        }
 
         document.querySelectorAll(".matte-swatch").forEach((sw) => {
           sw.addEventListener("click", () => {
