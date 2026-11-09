@@ -2429,15 +2429,17 @@
               if (tag === 0x010f) out.make = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x0110) out.model = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x0131) out.software = this._readAscii(view, valOffset, numValues);
-              else if (tag === 0x0132 && !out.dateTime) out.dateTime = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x0132 && !out.dateTime) out.dateTime = this._readDate(view, valOffset, numValues);
               else if (tag === 0x013b) out.artist = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x8298) out.copyright = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x010e) out.description = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x8769) ptrs.exifIfd = view.getUint32(valOffset, little);
               else if (tag === 0x8825) ptrs.gpsIfd = view.getUint32(valOffset, little);
             } else if (group === "EXIF") {
-              if (tag === 0x9003) out.dateTime = this._readAscii(view, valOffset, numValues);
-              else if (tag === 0x829a) {
+              if (tag === 0x9003) {
+                const taken = this._readDate(view, valOffset, numValues);
+                if (taken) out.dateTime = taken; // keep the IFD0 fallback when this one is blank
+              } else if (tag === 0x829a) {
                 const r = this._readRational(view, valOffset, little);
                 if (r > 0) out.exposureTime = this.formatExposure(r); // significant digits: 1/32000 s must survive
               } else if (tag === 0x829d) {
@@ -2513,13 +2515,18 @@
           }
         },
 
+        // Cameras write "    :  :     :  :  " or "0000:00:00 00:00:00" when the clock is unset:
+        // such placeholders would only show up as garbage in the form, so read them as empty
+        _readDate(view, offset, len) {
+          return this.normalizeDate(this._readAscii(view, offset, len));
+        },
+
         _readRational(view, offset, little) {
           const num = view.getUint32(offset, little);
           const den = view.getUint32(offset + 4, little);
           return den === 0 ? 0 : num / den;
         },
 
-        // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants, drop anything unparsable
         // Shutter speed in seconds from "0.008", "1/125", "1/125s", '2"' ... (NaN when unparsable)
         parseExposure(raw) {
           const s = String(raw == null ? "" : raw).trim().replace(/\s*(sec|s|秒|"|”|″)$/i, "").trim();
@@ -2542,6 +2549,7 @@
           return String(Number(seconds.toPrecision(6)));
         },
 
+        // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants, drop anything unparsable
         normalizeDate(raw) {
           const s = (raw || "").trim();
           if (!s) return "";
