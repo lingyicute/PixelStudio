@@ -4134,7 +4134,10 @@
         const outCanvas = document.createElement("canvas");
         outCanvas.width = outW;
         outCanvas.height = outH;
-        const ctx = outCanvas.getContext("2d");
+        // BMP and lossy PNG read the pixels back (getImageData): ask for a CPU-backed canvas up front
+        const needsReadback = state.outputFormat === "image/bmp" || (state.outputFormat === "image/png" && state.compressionMode !== "lossless");
+        const ctx = outCanvas.getContext("2d", { willReadFrequently: needsReadback });
+        if (!ctx) releaseCanvas(outCanvas);
         if (!ctx) {
           showToast("无法创建画布，可能是内存不足");
           clearOutput();
