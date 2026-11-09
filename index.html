@@ -2566,7 +2566,7 @@
         },
 
         // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
-        buildTiffBuffer(meta) {
+        buildTiffBuffer(meta, dims) {
           const encoder = new TextEncoder();
           const MAX_TEXT_BYTES = 8000;
           const makeStr = (meta.make || "").trim();
@@ -2584,7 +2584,8 @@
           const latVal = parseFloat(meta.gpsLat);
           const lngVal = parseFloat(meta.gpsLng);
 
-          const hasExifSub = Boolean(dateTimeStr || fNum > 0 || expTime > 0 || isoVal > 0 || focalVal > 0);
+          const hasDims = Boolean(dims && dims.w > 0 && dims.h > 0);
+          const hasExifSub = Boolean(hasDims || dateTimeStr || fNum > 0 || expTime > 0 || isoVal > 0 || focalVal > 0);
           const hasGpsSub = !Number.isNaN(latVal) || !Number.isNaN(lngVal);
 
           // Collect IFD0 entries
@@ -2653,6 +2654,13 @@
           const exifIfd = [];
           if (hasExifSub) {
             addRaw(exifIfd, 0x9000, 7, 4, [0x30, 0x32, 0x33, 0x30]); // ExifVersion "0230" (mandatory)
+            addRaw(exifIfd, 0x9101, 7, 4, [1, 2, 3, 0]); // ComponentsConfiguration: Y Cb Cr (mandatory)
+            addRaw(exifIfd, 0xa000, 7, 4, [0x30, 0x31, 0x30, 0x30]); // FlashpixVersion "0100" (mandatory)
+            addShort(exifIfd, 0xa001, 1); // ColorSpace: sRGB (mandatory)
+            if (hasDims) {
+              addLong(exifIfd, 0xa002, dims.w); // PixelXDimension: tells readers the real output size
+              addLong(exifIfd, 0xa003, dims.h); // PixelYDimension
+            }
             addRational(exifIfd, 0x829a, expTime, 1000000);
             addRational(exifIfd, 0x829d, fNum, 100);
             if (isoVal > 0) {
@@ -2665,6 +2673,7 @@
               }
             }
             addAscii(exifIfd, 0x9003, dateTimeStr);
+            addAscii(exifIfd, 0x9004, dateTimeStr); // DateTimeDigitized, read by tools that ignore DateTimeOriginal
             addRational(exifIfd, 0x920a, focalVal, 100);
           }
 
@@ -2775,7 +2784,7 @@
         },
 
         // Inject or strip APP1 EXIF segment in a JPEG Uint8Array
-        processJpegBytes(jpegBytes, stripExif, meta) {
+        processJpegBytes(jpegBytes, stripExif, meta, dims) {
           if (jpegBytes.length < 4 || jpegBytes[0] !== 0xff || jpegBytes[1] !== 0xd8) {
             return jpegBytes;
           }
@@ -2803,7 +2812,7 @@
           }
 
           if (!stripExif) {
-            const tiffBytes = this.buildTiffBuffer(meta);
+            const tiffBytes = this.buildTiffBuffer(meta, dims);
             const app1Len = 2 + 6 + tiffBytes.length;
             if (app1Len > 0xffff) {
               // A JPEG segment cannot exceed 64 KB; skip EXIF rather than emit a corrupt file
@@ -2833,9 +2842,9 @@
         },
 
         // Inject PNG eXIf chunk into a PNG Uint8Array
-        injectPngExif(pngBytes, stripExif, meta) {
+        injectPngExif(pngBytes, stripExif, meta, dims) {
           if (stripExif || pngBytes.length < 33) return pngBytes;
-          const tiffBytes = this.buildTiffBuffer(meta);
+          const tiffBytes = this.buildTiffBuffer(meta, dims);
           // Build 'eXIf' chunk: [4B len][4B 'eXIf'][tiffBytes][4B CRC32]
           const chunk = new Uint8Array(12 + tiffBytes.length);
           const dv = new DataView(chunk.buffer);
@@ -2896,7 +2905,7 @@
             vp8x = { fourcc: "VP8X", payload: p };
           }
 
-          const exifChunk = { fourcc: "EXIF", payload: this.buildTiffBuffer(meta) };
+          const exifChunk = { fourcc: "EXIF", payload: this.buildTiffBuffer(meta, { w: canvasW, h: canvasH }) };
           const ordered = [vp8x, ...body, exifChunk];
 
           let total = 12;
@@ -4073,11 +4082,11 @@
             // Inject or strip binary EXIF metadata (JPEG APP1 / PNG eXIf / WebP RIFF EXIF chunk)
             if (requestedFormat === "image/jpeg") {
               const buf = await rawBlob.arrayBuffer();
-              const processed = ExifEngine.processJpegBytes(new Uint8Array(buf), state.stripExif, state.exif);
+              const processed = ExifEngine.processJpegBytes(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
               finalBlob = new Blob([processed], { type: "image/jpeg" });
             } else if (requestedFormat === "image/png") {
               const buf = await rawBlob.arrayBuffer();
-              const processed = ExifEngine.injectPngExif(new Uint8Array(buf), state.stripExif, state.exif);
+              const processed = ExifEngine.injectPngExif(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
               finalBlob = new Blob([processed], { type: "image/png" });
             } else if (requestedFormat === "image/webp") {
               const buf = await rawBlob.arrayBuffer();
