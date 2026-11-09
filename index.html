@@ -4923,7 +4923,10 @@
             .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
             .replace(/\.(jpe?g|png|webp|bmp|avif)$/i, "")
             .replace(/^[\s.]+|[\s.]+$/g, "") || "pixelstudio_output";
-          const fullFilename = `${cleanName}.${ext}`;
+          // Keep names within common file-system limits (by code point) and avoid Windows device names
+          let safeName = Array.from(cleanName).slice(0, 120).join("").replace(/[\s.]+$/, "") || "pixelstudio_output";
+          if (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(safeName)) safeName = `_${safeName}`;
+          const fullFilename = `${safeName}.${ext}`;
 
           const link = document.createElement("a");
           link.href = state.outputUrl;
