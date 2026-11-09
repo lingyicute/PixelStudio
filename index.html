@@ -3336,6 +3336,10 @@
         c.width = nw;
         c.height = nh;
         const cx = c.getContext("2d");
+        if (!cx) {
+          releaseCanvas(c);
+          throw new Error("无法分配工作画布，请尝试尺寸较小的图片");
+        }
         cx.imageSmoothingEnabled = true;
         cx.imageSmoothingQuality = "high";
         cx.drawImage(img, 0, 0, nw, nh);
@@ -3382,8 +3386,9 @@
             // Runs before init so that a downscale warning raised by init is not overwritten
             if (typeof onLoaded === "function") onLoaded();
             try {
+              const fallbackExt = ((file.type || "").split("/")[1] || "png").replace("jpeg", "jpg").replace("+xml", "");
               initWorkspaceWithImage(img, {
-                fileName: file.name,
+                fileName: (file.name || "").trim() || `clipboard.${fallbackExt}`,
                 fileSize: file.size,
                 mimeType: file.type,
                 exif: parsedExif
@@ -3517,6 +3522,7 @@
         if (state.sourceImg instanceof HTMLCanvasElement && state.sourceImg !== safe.source) releaseCanvas(state.sourceImg);
         imageSerial++;
         rawEncodeCache = null;
+        lastScheduledEncodeKey = null;
         state.hasImage = true;
         state.sourceImg = safe.source;
         state.sourceW = safe.w;
@@ -3599,20 +3605,20 @@
         rebuildTransformedSource(true);
       }
 
-      // Export in the format the picture came in (once, for the first image, unless the user already
-      // chose): a PNG / WebP with transparency would otherwise silently be flattened onto a JPEG matte.
+      // Export in the format the picture came in (unless the user already chose one manually):
+      // a PNG / WebP with transparency would otherwise silently be flattened onto a JPEG matte.
       // PNG is also switched to lossless, because its "lossy" mode quantizes (and dithers) the colours.
       function applyDefaultOutputFormat(meta) {
-        if (state.formatTouched || state.autoFormatApplied) return;
+        if (state.formatTouched) return;
         state.autoFormatApplied = true;
         const ext = ((meta.fileName || "").match(/\.([a-z0-9]+)$/i) || [])[1];
-        const byMime = { "image/png": "image/png", "image/webp": "image/webp", "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
-        const byExt = { png: "image/png", webp: "image/webp", gif: "image/png", svg: "image/png", bmp: "image/png" };
-        const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()];
-        if (!target || target === state.outputFormat) return;
-        const btn = document.querySelector(`#formatSegmented .segmented-btn[data-format="${target}"]`);
-        if (!btn) return;
-        btn.click();
+        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp", "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
+        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/png", svg: "image/png", bmp: "image/png" };
+        const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()] || "image/jpeg";
+        if (target !== state.outputFormat) {
+          const btn = document.querySelector(`#formatSegmented .segmented-btn[data-format="${target}"]`);
+          if (btn) btn.click();
+        }
         if (target === "image/png" && !state.modeTouched && state.compressionMode !== "lossless") {
           state.autoLosslessForPng = true;
           document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
@@ -4068,23 +4074,33 @@
          ====================================================================== */
       let encodeTimer = null;
       let encodeSeq = 0; // Monotonic token: results of superseded (older) encodes are discarded
+      let lastScheduledEncodeKey = null;
+
       // The result on screen no longer matches the settings (e.g. mid crop drag): block export of the
       // stale file now, but leave the actual encode to whoever finishes the gesture
       function invalidateOutput() {
         if (!state.hasImage) return;
         clearTimeout(encodeTimer);
+        encodeTimer = null;
+        lastScheduledEncodeKey = null;
         encodeSeq++;
         setEncodePending(true);
       }
 
       function scheduleOutputEncode() {
         if (!state.hasImage) return;
+        const nextKey = buildEncodeKey();
+        if (nextKey === lastScheduledEncodeKey && (encodeTimer !== null || state.outputBlob !== null)) {
+          return;
+        }
+        lastScheduledEncodeKey = nextKey;
         clearTimeout(encodeTimer);
         // Invalidate any encode still in flight, otherwise its late result would re-enable
         // the export button with a stale file while the new encode is only pending
         encodeSeq++;
         setEncodePending(true);
         encodeTimer = setTimeout(() => {
+          encodeTimer = null;
           try {
             generateOutputBlob();
           } catch (err) {
@@ -4102,6 +4118,7 @@
         if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
         state.outputUrl = null;
         state.outputBlob = null;
+        lastScheduledEncodeKey = null;
         compareAfterCache = null;
         els.estimatedSizeLabel.textContent = "-- KB";
         els.sizeDeltaPill.textContent = "编码失败";
@@ -4122,7 +4139,6 @@
       function drawResampled(ctx, src, sx, sy, sw, sh, dw, dh, quality) {
         let cur = src;
         let cx = sx, cy = sy, cw = sw, ch = sh;
-        const temps = [];
         if (quality === "high") {
           while (cw >= dw * 2 || ch >= dh * 2) {
             const nw = cw >= dw * 2 ? Math.max(dw, Math.ceil(cw / 2)) : cw;
@@ -4131,18 +4147,20 @@
             tmp.width = nw;
             tmp.height = nh;
             const tctx = tmp.getContext("2d");
-            if (!tctx) break;
+            if (!tctx) {
+              releaseCanvas(tmp);
+              break;
+            }
             tctx.imageSmoothingEnabled = true;
             tctx.imageSmoothingQuality = "high";
             tctx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
-            temps.push(tmp);
+            if (cur !== src) releaseCanvas(cur);
             cur = tmp;
             cx = 0; cy = 0; cw = nw; ch = nh;
           }
         }
         ctx.drawImage(cur, cx, cy, cw, ch, 0, 0, dw, dh);
-        // Release the intermediate bitmaps right away instead of waiting for GC
-        for (const t of temps) { t.width = 0; t.height = 0; }
+        if (cur !== src) releaseCanvas(cur);
       }
 
       // The compressed pixels of the last successful encode, keyed by every setting that affects them.
@@ -4161,6 +4179,34 @@
           outW, outH, state.outputFormat, usesMatte ? state.matteColor : "", state.resampleQuality,
           isLossy ? state.compressionRate : "lossless"
         ]);
+      }
+
+      function buildEncodeKey() {
+        const outW = Math.max(1, Math.round(state.targetW));
+        const outH = Math.max(1, Math.round(state.targetH));
+        const pixelKey = buildPixelKey(outW, outH);
+        const supportsExif = state.outputFormat === "image/jpeg" || state.outputFormat === "image/png" || state.outputFormat === "image/webp";
+        if (!supportsExif) return pixelKey;
+        readExifFromInputs();
+        if (state.stripExif) return `${pixelKey}|strip`;
+        const m = state.exif;
+        const lat = parseFloat(m.gpsLat);
+        const lng = parseFloat(m.gpsLng);
+        return `${pixelKey}|${JSON.stringify([
+          (m.make || "").trim(),
+          (m.model || "").trim(),
+          (m.artist || "").trim(),
+          (m.software || "").trim(),
+          ExifEngine.normalizeDate(m.dateTime),
+          (m.copyright || "").trim(),
+          (m.description || "").trim(),
+          parseFloat(m.fNumber) || 0,
+          ExifEngine.parseExposure(m.exposureTime) || 0,
+          parseInt(m.iso, 10) || 0,
+          parseFloat(m.focalLength) || 0,
+          Number.isFinite(lat) ? lat : "",
+          Number.isFinite(lng) ? lng : ""
+        ])}`;
       }
 
       function generateOutputBlob() {
@@ -4258,6 +4304,7 @@
           // Browser returned null OR silently substituted PNG for an unsupported format
           if (!rawBlob || (rawBlob.type && rawBlob.type !== requestedFormat)) {
             if (requestedFormat !== "image/png") {
+              lastScheduledEncodeKey = null;
               showToast("当前浏览器不支持导出该格式，已自动回退为 PNG");
               if (requestedFormat === "image/avif") $("btnFormatAvif").style.display = "none";
               // Go through the real button so banner / matte row / compression mode stay consistent
@@ -4289,14 +4336,17 @@
           // Inject or strip binary EXIF metadata (JPEG APP1 / PNG eXIf / WebP RIFF EXIF chunk)
           if (requestedFormat === "image/jpeg") {
             const buf = await rawBlob.arrayBuffer();
+            if (seq !== encodeSeq) return;
             const processed = ExifEngine.processJpegBytes(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
             finalBlob = new Blob([processed], { type: "image/jpeg" });
           } else if (requestedFormat === "image/png") {
             const buf = await rawBlob.arrayBuffer();
+            if (seq !== encodeSeq) return;
             const processed = ExifEngine.injectPngExif(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
             finalBlob = new Blob([processed], { type: "image/png" });
           } else if (requestedFormat === "image/webp") {
             const buf = await rawBlob.arrayBuffer();
+            if (seq !== encodeSeq) return;
             const processed = ExifEngine.injectWebpExif(new Uint8Array(buf), state.stripExif, state.exif, outW, outH);
             finalBlob = new Blob([processed], { type: "image/webp" });
           }
@@ -4706,10 +4756,13 @@
         window.addEventListener("paste", (e) => {
           const items = e.clipboardData && e.clipboardData.items;
           if (!items) return;
+          const inTextField = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable);
+          if (inTextField && Array.from(e.clipboardData.types || []).includes("text/plain")) return;
           for (const item of items) {
             if (item.type.startsWith("image/")) {
               const file = item.getAsFile();
               if (file) {
+                e.preventDefault();
                 loadImageFromFile(file, () => showToast("已从剪贴板粘贴图片"));
                 break;
               }
@@ -5149,7 +5202,8 @@
         });
 
         els.inpMatteColor.addEventListener("input", () => {
-          document.querySelectorAll(".matte-swatch").forEach((s) => s.classList.remove("active"));
+          const hex = (els.inpMatteColor.value || "").toLowerCase();
+          document.querySelectorAll(".matte-swatch").forEach((s) => s.classList.toggle("active", s.dataset.matte === hex));
           state.matteColor = els.inpMatteColor.value;
           scheduleOutputEncode();
         });
@@ -5189,11 +5243,11 @@
           });
         });
 
-        function updateCompressionRate(rate) {
+        function updateCompressionRate(rate, syncExactInput = true) {
           const clamped = Math.max(1, Math.min(99, Math.round(rate)));
           state.compressionRate = clamped;
           els.sliderCompression.value = Math.min(95, clamped);
-          els.inpCompressionExact.value = clamped;
+          if (syncExactInput) els.inpCompressionExact.value = clamped;
           els.compressionRateLabel.textContent = `压缩 ${clamped}% · 画质 ${100 - clamped}%`;
           document.querySelectorAll("#compressionPresets .m3-chip").forEach((c) => {
             c.classList.toggle("active", parseInt(c.dataset.comp, 10) === clamped);
@@ -5205,9 +5259,14 @@
           updateCompressionRate(parseInt(els.sliderCompression.value, 10));
         });
 
+        els.inpCompressionExact.addEventListener("input", () => {
+          const v = parseInt(els.inpCompressionExact.value, 10);
+          if (Number.isFinite(v)) updateCompressionRate(v, false);
+        });
+
         els.inpCompressionExact.addEventListener("change", () => {
           const v = parseInt(els.inpCompressionExact.value, 10);
-          updateCompressionRate(Number.isFinite(v) ? v : state.compressionRate);
+          updateCompressionRate(Number.isFinite(v) ? v : state.compressionRate, true);
         });
 
         document.querySelectorAll("#compressionPresets .m3-chip").forEach((chip) => {
