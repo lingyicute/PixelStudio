@@ -3819,6 +3819,35 @@
         els.btnDownloadText.textContent = pending ? "编码中…" : "导出保存图片";
       }
 
+      // Single-pass drawImage aliases badly on big reductions in engines that ignore
+      // imageSmoothingQuality (Firefox / Safari). For "high" quality, halve step by step
+      // (a box-filter pyramid) until the last step is less than 2x, then do the final draw.
+      function drawResampled(ctx, src, sx, sy, sw, sh, dw, dh, quality) {
+        let cur = src;
+        let cx = sx, cy = sy, cw = sw, ch = sh;
+        const temps = [];
+        if (quality === "high") {
+          while (cw >= dw * 2 || ch >= dh * 2) {
+            const nw = cw >= dw * 2 ? Math.max(dw, Math.ceil(cw / 2)) : cw;
+            const nh = ch >= dh * 2 ? Math.max(dh, Math.ceil(ch / 2)) : ch;
+            const tmp = document.createElement("canvas");
+            tmp.width = nw;
+            tmp.height = nh;
+            const tctx = tmp.getContext("2d");
+            if (!tctx) break;
+            tctx.imageSmoothingEnabled = true;
+            tctx.imageSmoothingQuality = "high";
+            tctx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
+            temps.push(tmp);
+            cur = tmp;
+            cx = 0; cy = 0; cw = nw; ch = nh;
+          }
+        }
+        ctx.drawImage(cur, cx, cy, cw, ch, 0, 0, dw, dh);
+        // Release the intermediate bitmaps right away instead of waiting for GC
+        for (const t of temps) { t.width = 0; t.height = 0; }
+      }
+
       function generateOutputBlob() {
         if (!state.hasImage || !state.transformedCanvas) return;
         const seq = ++encodeSeq;
@@ -3859,16 +3888,16 @@
         }
 
         // Draw exact cropped source region into target output dimensions
-        ctx.drawImage(
+        drawResampled(
+          ctx,
           state.transformedCanvas,
           Math.round(state.cropX),
           Math.round(state.cropY),
           Math.round(state.cropW),
           Math.round(state.cropH),
-          0,
-          0,
           outW,
-          outH
+          outH,
+          state.resampleQuality
         );
 
         const isLossless = state.compressionMode === "lossless";
