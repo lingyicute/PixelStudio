@@ -1483,6 +1483,7 @@
       /* Stage occupies top 42% of viewport on mobile */
       .stage-area {
         flex: none;
+        height: 42vh; /* fallback for browsers without dynamic viewport units */
         height: 42dvh;
         min-height: 220px;
         border-bottom: 1px solid var(--md-sys-color-outline-variant);
@@ -1655,7 +1656,10 @@
       transition: opacity 0.15s;
     }
 
-    /* Respect reduced motion preferences */
+    /* Let native controls (select popups, spinners, scrollbars, color input) follow the theme */
+    :root { color-scheme: light; }
+    [data-theme="dark"] { color-scheme: dark; }
+
     /* Keyboard focus indicators for controls that suppress the native outline */
     .crop-box:focus { outline: none; }
     .crop-box:focus-visible,
@@ -1670,6 +1674,7 @@
       outline-offset: 2px;
     }
 
+    /* Respect reduced motion preferences */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
