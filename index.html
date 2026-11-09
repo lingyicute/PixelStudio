@@ -3202,6 +3202,10 @@
         return { source: c, w: nw, h: nh, downscaled: true };
       }
 
+      function releaseCanvas(canvas) {
+        if (canvas) { canvas.width = 0; canvas.height = 0; }
+      }
+
       let loadToken = 0; // Only the most recently requested image may initialise the workspace
 
       async function loadImageFromFile(file, onLoaded) {
@@ -3362,6 +3366,9 @@
 
       function initWorkspaceWithImage(img, meta) {
         const safe = ensureSafeSource(img);
+        // Free the previous working canvases right away: big canvases are scarce on mobile browsers
+        releaseCanvas(state.transformedCanvas);
+        if (state.sourceImg instanceof HTMLCanvasElement && state.sourceImg !== safe.source) releaseCanvas(state.sourceImg);
         state.hasImage = true;
         state.sourceImg = safe.source;
         state.sourceW = safe.w;
@@ -3465,7 +3472,9 @@
         ctx.setTransform(cs * fx, sn * fx, -sn * fy, cs * fy, rotW / 2, rotH / 2);
         ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
 
+        const previousCanvas = state.transformedCanvas;
         state.transformedCanvas = tc;
+        releaseCanvas(previousCanvas);
         state.rotW = rotW;
         state.rotH = rotH;
 
