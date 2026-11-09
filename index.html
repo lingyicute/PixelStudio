@@ -2255,10 +2255,14 @@
           if (view.getUint16(0, false) === 0xffd8) {
             let offset = 2;
             while (offset + 4 <= view.byteLength) {
-              const marker = view.getUint16(offset, false);
-              if (marker === 0xffda || marker === 0xffd9) break; // SOS or EOI
-              if ((marker & 0xff00) !== 0xff00) break;
+              if (view.getUint8(offset) !== 0xff) break;
+              const m2 = view.getUint8(offset + 1);
+              if (m2 === 0xff) { offset += 1; continue; } // fill byte preceding a marker
+              if (m2 === 0xda || m2 === 0xd9 || m2 === 0x00) break; // SOS, EOI or stray data
+              if (m2 === 0x01 || (m2 >= 0xd0 && m2 <= 0xd7)) { offset += 2; continue; } // standalone markers carry no length
+              const marker = 0xff00 | m2;
               const segLen = view.getUint16(offset + 2, false);
+              if (segLen < 2) break; // corrupt segment length
               if (marker === 0xffe1 && offset + 10 <= view.byteLength) {
                 // Check "Exif\0\0"
                 if (
