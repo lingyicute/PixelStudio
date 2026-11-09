@@ -1127,7 +1127,8 @@
       outline: none;
       padding: 2px 0;
     }
-    .m3-field input[type="number"] {
+    .m3-field input[type="number"],
+    .m3-field #exifExposure {
       font-family: var(--font-mono);
     }
 
@@ -2088,8 +2089,8 @@
                     <input type="number" id="exifFNumber" step="0.1" min="0.7" max="64" placeholder="如 1.8" />
                   </div>
                   <div class="m3-field">
-                    <label for="exifExposure">快门速度 (秒, 如 0.008)</label>
-                    <input type="number" id="exifExposure" step="0.0001" min="0.00001" max="3600" placeholder="如 0.008 (1/125s)" />
+                    <label for="exifExposure">快门速度 (秒, 支持 1/125)</label>
+                    <input type="text" inputmode="decimal" autocomplete="off" id="exifExposure" placeholder="如 1/125 或 0.008" />
                   </div>
                   <div class="m3-field">
                     <label for="exifIso">ISO 感光度</label>
@@ -2397,7 +2398,7 @@
               if (tag === 0x9003) out.dateTime = this._readAscii(view, valOffset, numValues);
               else if (tag === 0x829a) {
                 const r = this._readRational(view, valOffset, little);
-                if (r > 0) out.exposureTime = String(Number(r.toPrecision(6))); // significant digits: 1/32000 s must survive
+                if (r > 0) out.exposureTime = this.formatExposure(r); // significant digits: 1/32000 s must survive
               } else if (tag === 0x829d) {
                 const r = this._readRational(view, valOffset, little);
                 if (r > 0) out.fNumber = String(Number(r.toFixed(2)));
@@ -2474,6 +2475,27 @@
         },
 
         // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants, drop anything unparsable
+        // Shutter speed in seconds from "0.008", "1/125", "1/125s", '2"' ... (NaN when unparsable)
+        parseExposure(raw) {
+          const s = String(raw == null ? "" : raw).trim().replace(/\s*(sec|s|秒|"|”|″)$/i, "").trim();
+          const frac = s.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+          if (frac) {
+            const den = parseFloat(frac[2]);
+            return den > 0 ? parseFloat(frac[1]) / den : NaN;
+          }
+          return /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(s) ? parseFloat(s) : NaN;
+        },
+
+        // Shutter speeds below 1 s read better as the classic "1/250" form
+        formatExposure(seconds) {
+          if (!(seconds > 0)) return "";
+          if (seconds < 1) {
+            const inv = 1 / seconds;
+            if (Math.abs(inv - Math.round(inv)) / inv < 0.01) return `1/${Math.round(inv)}`;
+          }
+          return String(Number(seconds.toPrecision(6)));
+        },
+
         normalizeDate(raw) {
           const s = (raw || "").trim();
           if (!s) return "";
@@ -2500,7 +2522,7 @@
           const descStr = (meta.description || "").trim();
 
           const fNum = parseFloat(meta.fNumber);
-          const expTime = parseFloat(meta.exposureTime);
+          const expTime = this.parseExposure(meta.exposureTime);
           const isoVal = parseInt(meta.iso, 10);
           const focalVal = parseFloat(meta.focalLength);
           const latVal = parseFloat(meta.gpsLat);
@@ -4557,6 +4579,20 @@
               scheduleOutputEncode();
             });
           });
+        });
+
+        // Accept "1/125" style shutter speeds; normalize to a canonical text once editing is done
+        els.exifExposure.addEventListener("change", () => {
+          const raw = els.exifExposure.value.trim();
+          if (!raw) return;
+          const v = ExifEngine.parseExposure(raw);
+          if (v > 0 && v <= 3600) {
+            els.exifExposure.value = ExifEngine.formatExposure(v);
+            readExifFromInputs();
+            scheduleOutputEncode();
+          } else {
+            showToast("快门速度格式无效（如 1/125 或 0.008），导出时将忽略该字段");
+          }
         });
 
         // Normalize the date once editing is done, and tell the user when it would be dropped on export
