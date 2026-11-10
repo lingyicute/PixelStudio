@@ -1681,7 +1681,6 @@
     /* Keyboard focus indicators for controls that suppress the native outline */
     .crop-box:focus { outline: none; }
     .crop-box:focus-visible,
-    .dropzone-card:focus-visible,
     input[type="range"].m3-slider:focus-visible {
       outline: 2px solid var(--md-sys-color-primary);
       outline-offset: 3px;
@@ -4811,17 +4810,8 @@
           if (e.target.closest("button")) return;
           els.fileInput.click();
         });
-        // Keyboard users can reach and activate the card as well
-        els.dropzoneCard.setAttribute("role", "button");
-        els.dropzoneCard.setAttribute("tabindex", "0");
-        els.dropzoneCard.setAttribute("aria-label", "选择本地图片");
-        els.dropzoneCard.addEventListener("keydown", (e) => {
-          if (e.target !== els.dropzoneCard) return;
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            els.fileInput.click();
-          }
-        });
+        // The card is only a mouse shortcut: keyboard users reach the real buttons inside it.
+        // Giving the card role="button" would hide those nested buttons from assistive technology.
 
         els.fileInput.addEventListener("change", (e) => {
           if (e.target.files && e.target.files[0]) {
