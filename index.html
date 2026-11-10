@@ -3955,6 +3955,7 @@
 
       // Nudge / resize the crop box with the keyboard (arrows = move, Shift+arrows = resize, Alt = 10px steps)
       els.cropBox.setAttribute("tabindex", "0");
+      els.cropBox.setAttribute("role", "group"); // a labelled generic div is not valid ARIA; group carries the label
       els.cropBox.setAttribute("aria-label", "裁剪选区，方向键移动，Shift+方向键调整大小");
       els.cropBox.addEventListener("keydown", (e) => {
         if (!state.hasImage) return;
