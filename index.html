@@ -4015,6 +4015,7 @@
         cropDragState = {
           pointerId: e.pointerId,
           dir,
+          moved: false,
           startX: e.clientX,
           startY: e.clientY,
           initCropX: state.cropX,
@@ -4029,7 +4030,9 @@
       window.addEventListener("pointermove", (e) => {
         if (!cropDragState || e.pointerId !== cropDragState.pointerId) return;
         const { dir, startX, startY, initCropX, initCropY, initCropW, initCropH, stageW, stageH } = cropDragState;
-        if (e.clientX === startX && e.clientY === startY) return;
+        // Skip motionless events before the drag really starts, but let it come back to its exact start
+        if (!cropDragState.moved && e.clientX === startX && e.clientY === startY) return;
+        cropDragState.moved = true;
         invalidateOutput();
         const dxPx = ((e.clientX - startX) / stageW) * state.rotW;
         const dyPx = ((e.clientY - startY) / stageH) * state.rotH;
