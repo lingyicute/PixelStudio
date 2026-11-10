@@ -1075,7 +1075,6 @@
       flex: 1;
       height: 38px;
       border: none;
-      border-right: 1px solid var(--md-sys-color-outline);
       background: transparent;
       color: var(--md-sys-color-on-surface);
       font-size: 12px;
@@ -1088,8 +1087,10 @@
       transition: background-color 0.18s, color 0.18s;
       padding: 0 8px;
     }
-    .segmented-btn:last-child {
-      border-right: none;
+    /* Dividers are drawn between neighbours, not as right borders: the hidden AVIF button is the last child,
+       so a :last-child rule would leave a stray border on BMP wherever AVIF is unavailable */
+    .segmented-btn + .segmented-btn {
+      border-left: 1px solid var(--md-sys-color-outline);
     }
     .segmented-btn:hover:not(.active) {
       background: rgba(128, 128, 128, 0.08);
