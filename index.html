@@ -3116,57 +3116,31 @@
           return new Blob([buffer], { type: "image/bmp" });
         },
 
-        // 4x4 Bayer threshold matrix for ordered dithering (normalized to -0.5..0.5)
-        _bayer4: [
-          0, 8, 2, 10,
-          12, 4, 14, 6,
-          3, 11, 1, 9,
-          15, 7, 13, 5
-        ].map((v) => v / 16 - 0.5),
-
-        // Perceptual color quantization + ordered dithering for Lossy PNG compression.
-        // Fewer distinct colors => far better DEFLATE ratio, while dithering suppresses banding.
+        // Uniform color quantization for Lossy PNG compression.
+        // Fewer distinct colors => far better DEFLATE ratio.
         quantizeCanvasForLossyPng(ctx, width, height, quality) {
           // Map quality (0.01..0.99) to levels per channel (4..64)
           const levels = Math.max(4, Math.min(64, Math.round(4 + quality * 60)));
           const step = 255 / (levels - 1);
           const imgData = ctx.getImageData(0, 0, width, height);
           const d = imgData.data;
-          const bayer = this._bayer4;
-          // Ordered dithering hides banding but is pure high-frequency noise to DEFLATE: at full strength
-          // it made the "lossy" PNG several times LARGER than the lossless one. Only the coarse levels
-          // (strong banding) get a gentle dither; from 24 levels up the plain quantization is used.
-          const ditherAmp = levels >= 24 ? 0 : step * 0.3 * ((24 - levels) / 20);
+          // Deliberately no dithering: it hides banding but is pure high-frequency noise to DEFLATE, so the
+          // coarse levels it was applied to came out LARGER than gentler settings (rate 95% > rate 70%)
+          const lut = new Uint8Array(256);
+          for (let v = 0; v < 256; v++) lut[v] = Math.round(Math.round(v / step) * step);
 
-          // Pre-compute per-pixel-position dither LUTs (16 positions × 256 values)
-          const luts = new Array(16);
-          for (let p = 0; p < 16; p++) {
-            const lut = new Uint8Array(256);
-            const offset = bayer[p] * ditherAmp;
-            for (let v = 0; v < 256; v++) {
-              const q = Math.round((v + offset) / step) * step;
-              lut[v] = q < 0 ? 0 : q > 255 ? 255 : Math.round(q);
+          for (let i = 0; i < d.length; i += 4) {
+            const a = d[i + 3];
+            if (a === 0) {
+              d[i] = 0;
+              d[i + 1] = 0;
+              d[i + 2] = 0;
+              continue;
             }
-            luts[p] = lut;
-          }
-
-          let i = 0;
-          for (let y = 0; y < height; y++) {
-            const rowBase = (y & 3) << 2;
-            for (let x = 0; x < width; x++, i += 4) {
-              const a = d[i + 3];
-              if (a === 0) {
-                d[i] = 0;
-                d[i + 1] = 0;
-                d[i + 2] = 0;
-                continue;
-              }
-              const lut = luts[rowBase | (x & 3)];
-              d[i] = lut[d[i]];
-              d[i + 1] = lut[d[i + 1]];
-              d[i + 2] = lut[d[i + 2]];
-              if (a < 255) d[i + 3] = lut[a];
-            }
+            d[i] = lut[d[i]];
+            d[i + 1] = lut[d[i + 1]];
+            d[i + 2] = lut[d[i + 2]];
+            if (a < 255) d[i + 3] = lut[a];
           }
           ctx.putImageData(imgData, 0, 0);
         }
@@ -3684,7 +3658,7 @@
 
       // Export in the format the picture came in (unless the user already chose one manually):
       // a PNG / WebP with transparency would otherwise silently be flattened onto a JPEG matte.
-      // PNG is also switched to lossless, because its "lossy" mode quantizes (and dithers) the colours.
+      // PNG is also switched to lossless, because its "lossy" mode quantizes the colours.
       function applyDefaultOutputFormat(meta) {
         if (state.formatTouched) return;
         state.autoFormatApplied = true;
