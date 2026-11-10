@@ -3889,8 +3889,9 @@
           dispW = dispH * imgAspect;
         }
 
-        dispW = Math.round(dispW);
-        dispH = Math.round(dispH);
+        // An extreme strip (3000×1) must not round down to an invisible 0px stage
+        dispW = Math.max(1, Math.round(dispW));
+        dispH = Math.max(1, Math.round(dispH));
 
         els.canvasStageInner.style.width = `${dispW}px`;
         els.canvasStageInner.style.height = `${dispH}px`;
