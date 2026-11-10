@@ -3393,6 +3393,14 @@
         if (canvas) { canvas.width = 0; canvas.height = 0; }
       }
 
+      // Assigning width / height clears the bitmap and resets the 2D context even when the value is unchanged,
+      // which can reallocate the backing store on every repaint (the resize handler repaints once per frame):
+      // only assign on change. Callers must clear / redraw the canvas themselves (both do).
+      function sizeCanvas(canvas, w, h) {
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+      }
+
       let loadToken = 0; // Only the most recently requested image may initialise the workspace
 
       async function loadImageFromFile(file, onLoaded) {
@@ -3903,8 +3911,7 @@
         els.canvasStageInner.style.height = `${dispH}px`;
 
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        els.previewCanvas.width = Math.round(dispW * dpr);
-        els.previewCanvas.height = Math.round(dispH * dpr);
+        sizeCanvas(els.previewCanvas, Math.round(dispW * dpr), Math.round(dispH * dpr));
 
         const ctx = els.previewCanvas.getContext("2d");
         ctx.imageSmoothingEnabled = true;
@@ -4518,8 +4525,7 @@
         const w = Math.round(els.canvasStageInner.clientWidth * dpr);
         const h = Math.round(els.canvasStageInner.clientHeight * dpr);
         if (!w || !h) return;
-        els.compareAfterCanvas.width = w;
-        els.compareAfterCanvas.height = h;
+        sizeCanvas(els.compareAfterCanvas, w, h);
         const aCtx = els.compareAfterCanvas.getContext("2d");
         aCtx.imageSmoothingEnabled = state.resampleQuality !== "pixelated";
         aCtx.imageSmoothingQuality = "high";
