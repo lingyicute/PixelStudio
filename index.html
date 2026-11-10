@@ -4112,6 +4112,14 @@
       window.addEventListener("pointerup", endCropDrag);
       window.addEventListener("pointercancel", endCropDrag);
 
+      // These drags are fully handled through pointer events: cancel the touch sequence so the browser
+      // derives no gesture from it. Released with speed, Chrome otherwise starts an invisible fling and
+      // swallows the next tap (e.g. on a toolbar button) to "stop" it.
+      const cancelTouchGesture = (e) => {
+        if (e.cancelable) e.preventDefault();
+      };
+      els.cropBox.addEventListener("touchstart", cancelTouchGesture, { passive: false });
+
       function applyAspectRatioPreset(ratioStr) {
         state.cropRatio = ratioStr;
         const r = parseRatioValue(ratioStr);
@@ -4605,6 +4613,7 @@
       };
       window.addEventListener("pointerup", endCompareDrag);
       window.addEventListener("pointercancel", endCompareDrag);
+      els.compareOverlay.addEventListener("touchstart", cancelTouchGesture, { passive: false });
 
       /* ======================================================================
          MODULE 10: EXIF FORM SYNC HELPERS
