@@ -1647,6 +1647,13 @@
       }
     }
 
+    /* Landscape phones are wide enough for the desktop layout: keep it clear of the notch and home indicator */
+    @media (min-width: 768px) {
+      .app-shell {
+        padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+    }
+
     /* Desktop: export button spans the dock width */
     .export-sticky-footer .btn-lg {
       width: 100%;
