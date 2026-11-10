@@ -3322,7 +3322,7 @@
           i++;
         }
         if (i === 0) return `${Math.round(val)} B`;
-        let text = val < 10 ? val.toFixed(2) : val.toFixed(1);
+        let text = val.toFixed(val < 9.995 ? 2 : 1); // 9.996 reads "10.0", not "10.00"
         // 1023.96 KB would print as "1024.0 KB": carry it into the next unit instead
         if (parseFloat(text) >= 1024 && i < units.length - 1) {
           val /= 1024;
