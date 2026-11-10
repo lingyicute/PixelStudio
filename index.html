@@ -7,7 +7,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#006A67" />
   <title>像素工坊 PixelStudio · Material You H5 图片处理工具</title>
   <meta name="description" content="像素工坊 PixelStudio：纯浏览器本地完成的图片裁剪、改尺寸、EXIF 读写与格式压缩工具。" />
@@ -1860,7 +1860,7 @@
 
           <!-- Interactive Image Preview + Crop Box + Split Compare -->
           <div class="canvas-stage-inner" id="canvasStageInner">
-            <canvas id="previewCanvas"></canvas>
+            <canvas id="previewCanvas" role="img" aria-label="图片预览"></canvas>
 
             <!-- Interactive Cropper Overlay -->
             <div class="crop-overlay" id="cropOverlay">
@@ -1902,22 +1902,22 @@
             </svg>
           </button>
           <div class="toolbar-divider" id="btnReplaceDivider"></div>
-          <button class="icon-btn" id="btnRotateLeft" title="逆时针旋转 90°">
+          <button class="icon-btn" id="btnRotateLeft" title="逆时针旋转 90°" aria-label="逆时针旋转 90°">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
             </svg>
           </button>
-          <button class="icon-btn" id="btnRotateRight" title="顺时针旋转 90°">
+          <button class="icon-btn" id="btnRotateRight" title="顺时针旋转 90°" aria-label="顺时针旋转 90°">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
             </svg>
           </button>
-          <button class="icon-btn" id="btnFlipH" title="水平镜像翻转">
+          <button class="icon-btn" id="btnFlipH" title="水平镜像翻转" aria-label="水平镜像翻转">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2"/><path d="M12 14v2"/><path d="M12 8v2"/><path d="M12 2v2"/>
             </svg>
           </button>
-          <button class="icon-btn" id="btnFlipV" title="垂直上下翻转">
+          <button class="icon-btn" id="btnFlipV" title="垂直上下翻转" aria-label="垂直上下翻转">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
             </svg>
@@ -1979,11 +1979,11 @@
                 </div>
                 <div class="m3-field">
                   <label for="inpCropW">裁剪宽度 (px)</label>
-                  <input type="number" id="inpCropW" min="16" step="1" value="1600" />
+                  <input type="number" id="inpCropW" min="1" step="1" value="1600" />
                 </div>
                 <div class="m3-field">
                   <label for="inpCropH">裁剪高度 (px)</label>
-                  <input type="number" id="inpCropH" min="16" step="1" value="1066" />
+                  <input type="number" id="inpCropH" min="1" step="1" value="1066" />
                 </div>
               </div>
 
@@ -2274,7 +2274,7 @@
               <!-- Output Filename Input -->
               <div class="m3-field">
                 <label for="inpOutputFilename">导出文件名 (自动追加扩展名)</label>
-                <input type="text" id="inpOutputFilename" value="pixelstudio_edited" placeholder="输入文件名" />
+                <input type="text" id="inpOutputFilename" value="pixelstudio_edited" placeholder="输入文件名" maxlength="120" autocomplete="off" spellcheck="false" />
               </div>
             </div>
           </section>
@@ -4589,6 +4589,7 @@
       els.compareDivider.setAttribute("aria-label", "原图与输出对比分隔线，左右方向键移动");
       els.compareDivider.setAttribute("aria-valuemin", "2");
       els.compareDivider.setAttribute("aria-valuemax", "98");
+      els.compareDivider.setAttribute("aria-orientation", "horizontal");
       els.compareDivider.setAttribute("aria-valuenow", "50");
       els.compareDivider.addEventListener("keydown", (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
