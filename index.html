@@ -4412,10 +4412,11 @@
           releaseCanvas(outCanvas);
           if (seq !== encodeSeq) return; // A newer encode has been requested meanwhile
 
-          // Browser returned null OR silently substituted PNG for an unsupported format
+          // A null blob means the encode itself failed (e.g. out of memory). A blob of another type (the browser
+          // silently substituted PNG) means the format is unsupported: only that case may fall back to PNG
           if (!rawBlob || (rawBlob.type && rawBlob.type !== requestedFormat)) {
             encodeInFlight = false;
-            if (requestedFormat !== "image/png") {
+            if (rawBlob && requestedFormat !== "image/png") {
               lastScheduledEncodeKey = null;
               showToast("当前浏览器不支持导出该格式，已自动回退为 PNG");
               if (requestedFormat === "image/avif") $("btnFormatAvif").style.display = "none";
