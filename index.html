@@ -5356,11 +5356,12 @@
 
         document.querySelectorAll("#compressionModeSegmented .segmented-btn").forEach((btn) => {
           btn.addEventListener("click", (ev) => {
-            if (ev.isTrusted) state.modeTouched = true;
             if (state.outputFormat === "image/bmp" && btn.dataset.mode === "lossy") {
               showToast("BMP 格式仅支持无损导出，如需有损压缩请选择 JPEG / WebP");
               return;
             }
+            // A rejected click is no manual choice: it must not pin the lossless mode BMP forced on
+            if (ev.isTrusted) state.modeTouched = true;
             setCompressionMode(btn.dataset.mode);
             scheduleOutputEncode();
           });
