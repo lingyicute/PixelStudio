@@ -3166,9 +3166,7 @@
          ====================================================================== */
       const state = {
         hasImage: false,
-        fileName: "sample.jpg",
         originalBytes: 0,
-        originalMime: "image/jpeg",
         sourceImg: null,        // Original HTMLImageElement (or downscaled canvas for extreme inputs)
         sourceW: 0,
         sourceH: 0,
@@ -3223,7 +3221,6 @@
         modeBeforeBmp: null,      // Compression mode to restore when leaving BMP
         formatTouched: false,     // The user picked an output format themselves
         modeTouched: false,       // The user picked lossy / lossless themselves
-        autoFormatApplied: false, // The default output format was already matched to the first image
         autoLosslessForPng: false, // Lossless was switched on automatically for a PNG input (undone when leaving PNG)
 
         // Live Output Cache
@@ -3238,7 +3235,6 @@
 
       const els = {
         fileInput: $("fileInput"),
-        stageArea: $("stageArea"),
         canvasViewport: $("canvasViewport"),
         dropzoneCard: $("dropzoneCard"),
         canvasStageInner: $("canvasStageInner"),
@@ -3586,9 +3582,7 @@
         state.sourceImg = safe.source;
         state.sourceW = safe.w;
         state.sourceH = safe.h;
-        state.fileName = meta.fileName;
         state.originalBytes = meta.fileSize;
-        state.originalMime = meta.mimeType;
 
         // Reset transforms
         state.rotation = 0;
@@ -3676,7 +3670,6 @@
       // PNG is also switched to lossless, because its "lossy" mode quantizes the colours.
       function applyDefaultOutputFormat(meta) {
         if (state.formatTouched) return;
-        state.autoFormatApplied = true;
         const ext = ((meta.fileName || "").match(/\.([a-z0-9]+)$/i) || [])[1];
         const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp", "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
         const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/png", svg: "image/png", bmp: "image/png" };
