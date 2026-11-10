@@ -2496,7 +2496,7 @@
                 if (rei > (out.iso === "65535" ? 65535 : 0)) out.iso = String(rei);
               } else if (tag === 0x920a && isRational) {
                 const r = this._readRational(view, valOffset, little, isSigned);
-                if (r > 0) out.focalLength = String(Number(r.toFixed(1)));
+                if (r > 0) out.focalLength = String(Number(r.toFixed(2))); // as precise as the writer: phone lenses are 5.96 mm, not 6
               }
             } else if (group === "GPS") {
               if (tag === 0x0001 && isAscii) gpsLatRef = this._readAscii(view, valOffset, numValues) || "N";
