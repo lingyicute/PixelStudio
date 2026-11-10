@@ -4615,7 +4615,7 @@
         state.compareSplit = Math.max(0.02, Math.min(0.98, (e.clientX - rect.left) / Math.max(1, rect.width)));
         updateCompareClip();
       };
-      els.compareDivider.addEventListener("pointerdown", startCompareDrag);
+      // The divider lives inside the overlay, so its pointerdown already bubbles here (no second handler)
       els.compareOverlay.addEventListener("pointerdown", startCompareDrag);
       window.addEventListener("pointermove", (e) => {
         if (compareDragPointer === null || e.pointerId !== compareDragPointer) return;
