@@ -1100,6 +1100,10 @@
       background: var(--md-sys-color-secondary-container);
       color: var(--md-sys-color-on-secondary-container);
     }
+    /* A check mark inside a segment marks the selected option: it must not stay behind on an unselected one */
+    .segmented-btn:not(.active) svg {
+      display: none;
+    }
     .segmented-btn:disabled {
       opacity: 0.4;
       cursor: not-allowed;
