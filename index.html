@@ -5146,8 +5146,10 @@
         els.sliderScalePercent.addEventListener("input", () => {
           if (!state.hasImage) return;
           const pct = parseInt(els.sliderScalePercent.value, 10) || 100;
-          els.scalePercentBadge.textContent = `${pct}%`;
-          syncResizeFromCrop(pct / 100);
+          syncResizeFromCrop(pct / 100); // also refreshes the badge with the scale that was really applied
+          // A size limit can cap the scale below the thumb: move the thumb back to the applied value
+          const applied = Math.round(state.resizeScale * 100);
+          if (applied < pct) els.sliderScalePercent.value = applied;
           if (state.compareMode) renderStageCanvas();
           scheduleOutputEncode();
         });
