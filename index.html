@@ -4993,10 +4993,15 @@
           const target = e && e.target;
           const minW = Math.min(16, state.rotW);
           const minH = Math.min(16, state.rotH);
-          let x = Math.min(state.rotW - minW, Math.max(0, parseInt(els.inpCropX.value, 10) || 0));
-          let y = Math.min(state.rotH - minH, Math.max(0, parseInt(els.inpCropY.value, 10) || 0));
-          let w = Math.min(state.rotW, Math.max(minW, parseInt(els.inpCropW.value, 10) || minW));
-          let h = Math.min(state.rotH, Math.max(minH, parseInt(els.inpCropH.value, 10) || minH));
+          // A field left empty keeps its current value instead of collapsing the selection to the minimum
+          const read = (inp, current) => {
+            const v = parseInt(inp.value, 10);
+            return Number.isFinite(v) ? v : current;
+          };
+          let x = Math.min(state.rotW - minW, Math.max(0, read(els.inpCropX, state.cropX)));
+          let y = Math.min(state.rotH - minH, Math.max(0, read(els.inpCropY, state.cropY)));
+          let w = Math.min(state.rotW, Math.max(minW, read(els.inpCropW, state.cropW)));
+          let h = Math.min(state.rotH, Math.max(minH, read(els.inpCropH, state.cropH)));
 
           // When X or Y is edited directly (e.g. from the initial full-frame state), shrink W/H to fit
           // rather than snapping the newly typed X/Y back to 0
