@@ -2634,7 +2634,7 @@
         },
 
         // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
-        buildTiffBuffer(meta, dims) {
+        buildTiffBuffer(meta, dims, forJpeg = false) {
           const encoder = new TextEncoder();
           const MAX_TEXT_BYTES = 8000;
           const makeStr = (meta.make || "").trim();
@@ -2719,6 +2719,14 @@
           addAscii(ifd0, 0x0132, dateTimeStr);
           addAscii(ifd0, 0x013b, artistStr);
           addAscii(ifd0, 0x8298, copyrightStr);
+          if (forJpeg) {
+            // Mandatory in the IFD0 of a JPEG (strict readers warn without them); 72 dpi is the
+            // value the Exif spec designates when the real resolution is unknown
+            addRational(ifd0, 0x011a, 72, 1); // XResolution
+            addRational(ifd0, 0x011b, 72, 1); // YResolution
+            addShort(ifd0, 0x0128, 2);        // ResolutionUnit: inches
+            addShort(ifd0, 0x0213, 1);        // YCbCrPositioning: centered
+          }
 
           const exifIfd = [];
           if (hasExifSub) {
@@ -2901,7 +2909,7 @@
           }
 
           if (!stripExif) {
-            const tiffBytes = this.buildTiffBuffer(meta, dims);
+            const tiffBytes = this.buildTiffBuffer(meta, dims, true);
             const app1Len = 2 + 6 + tiffBytes.length;
             if (app1Len > 0xffff) {
               // A JPEG segment cannot exceed 64 KB; skip EXIF rather than emit a corrupt file
