@@ -2085,7 +2085,7 @@
               <div class="resize-lock-row">
                 <div class="m3-field">
                   <label for="inpResizeW">目标宽度 (px)</label>
-                  <input type="number" id="inpResizeW" min="1" max="16384" step="1" value="1600" />
+                  <input type="number" id="inpResizeW" min="1" max="16383" step="1" value="1600" />
                 </div>
 
                 <button class="icon-btn active" id="btnLockAspect" aria-pressed="true" title="锁定/解锁宽高比" aria-label="锁定宽高比">
@@ -2099,7 +2099,7 @@
 
                 <div class="m3-field">
                   <label for="inpResizeH">目标高度 (px)</label>
-                  <input type="number" id="inpResizeH" min="1" max="16384" step="1" value="1066" />
+                  <input type="number" id="inpResizeH" min="1" max="16383" step="1" value="1066" />
                 </div>
               </div>
 
@@ -3442,7 +3442,9 @@
       const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       const MAX_CANVAS_PIXELS = IS_IOS ? 16000000 : 64000000;
-      const MAX_CANVAS_SIDE = 16384; // Also the largest export edge, so a full-size export never trips the limit
+      // 16383 px is the longest edge WebP can store: a 16384 px export silently came out one pixel short.
+      // Also the largest export edge, so a full-size export never trips the limit
+      const MAX_CANVAS_SIDE = 16383;
 
       // Downscale an oversized decoded image into a safe working source (only for extreme inputs)
       function ensureSafeSource(img) {
