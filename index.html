@@ -4044,7 +4044,19 @@
         e.preventDefault();
         e.stopPropagation();
         const handle = e.target.closest(".crop-handle");
-        const dir = handle ? handle.dataset.dir : "move";
+        let dir = "move";
+        if (handle) {
+          // The 28px handles reach into the box: on a small selection they overlap each other and cover it
+          // completely, so it could only be resized (and not always by the handle aimed at), never moved.
+          // Go by position instead: the outer quarter of each side resizes, the middle of the box moves.
+          // 16 = the 14px a handle reaches inwards + the 2px border, i.e. no change for larger boxes
+          const r = els.cropBox.getBoundingClientRect();
+          const reachX = Math.min(16, r.width / 4);
+          const reachY = Math.min(16, r.height / 4);
+          const ns = e.clientY < r.top + reachY ? "n" : e.clientY > r.bottom - reachY ? "s" : "";
+          const ew = e.clientX < r.left + reachX ? "w" : e.clientX > r.right - reachX ? "e" : "";
+          dir = ns + ew || "move";
+        }
         try { els.cropBox.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
         els.cropBox.focus({ preventScroll: true }); // pointerdown is default-prevented, so focus manually for arrow-key nudging
 
