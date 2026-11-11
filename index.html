@@ -1682,6 +1682,14 @@
       top: 6px;
       left: 6px;
     }
+    /* ...and hangs from the right corner when it would be cut off at the right edge of the stage area */
+    .crop-box.hud-right .crop-hud-badge {
+      left: auto;
+      right: 0;
+    }
+    .crop-box.hud-right.hud-inside .crop-hud-badge {
+      right: 6px;
+    }
 
     /* Pending state while an encode is in flight */
     .size-metric-val.pending {
@@ -3988,6 +3996,9 @@
         const scaleX = innerW / state.rotW;
         const scaleY = innerH / state.rotH;
         const topPx = state.cropY * scaleY;
+        // Measured before the box is restyled, so that no extra layout pass is forced
+        const roomRight = els.canvasViewport.clientWidth - els.canvasStageInner.offsetLeft - state.cropX * scaleX;
+        const hudRight = roomRight < els.cropHudBadge.offsetWidth + 8;
 
         els.cropBox.style.left = `${state.cropX * scaleX}px`;
         els.cropBox.style.top = `${topPx}px`;
@@ -3995,6 +4006,8 @@
         els.cropBox.style.height = `${state.cropH * scaleY}px`;
         // Keep the size badge readable when the box touches the top edge
         els.cropBox.classList.toggle("hud-inside", topPx < 30);
+        // ...and when the box starts too close to the right edge for the badge to fit next to it
+        els.cropBox.classList.toggle("hud-right", hudRight);
       }
 
       // Nudge / resize the crop box with the keyboard (arrows = move, Shift+arrows = resize, Alt = 10px steps)
