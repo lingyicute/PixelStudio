@@ -4958,7 +4958,11 @@
 
         els.btnToggleCompareTop.addEventListener("click", () => {
           state.compareMode = !state.compareMode;
-          cropDragState = null;
+          if (cropDragState) {
+            // The pointerup of an interrupted drag is ignored, so the encode it left pending has to start here
+            cropDragState = null;
+            scheduleOutputEncode();
+          }
           compareDragPointer = null;
           els.btnToggleCompareTop.classList.toggle("btn-filled", state.compareMode);
           els.btnToggleCompareTop.classList.toggle("btn-tonal", !state.compareMode);
