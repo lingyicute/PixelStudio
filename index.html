@@ -1526,6 +1526,11 @@
       .dropzone-features {
         display: none;
       }
+      /* Full-size buttons wrap onto two rows on 360px phones, which makes the card taller than the stage */
+      .dropzone-card .btn-lg {
+        height: 42px;
+        padding: 0 18px;
+      }
 
       .stage-toolbar {
         bottom: 8px;
@@ -1629,6 +1634,13 @@
       .nav-rail {
         padding-left: max(8px, env(safe-area-inset-left));
         padding-right: max(8px, env(safe-area-inset-right));
+      }
+    }
+
+    /* 320px phones still need two button rows: drop the decorative icon so the card fits the stage */
+    @media (max-width: 340px) {
+      .dropzone-icon-wrap {
+        display: none;
       }
     }
 
