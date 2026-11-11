@@ -3809,6 +3809,19 @@
         els.resizeSourceInfo.textContent = `当前裁剪区域: ${Math.round(state.cropW)} × ${Math.round(state.cropH)} px`;
       }
 
+      // Pixel budget with a little headroom, because target sizes are rounded to whole pixels after scaling
+      const SAFE_CANVAS_PIXELS = MAX_CANVAS_PIXELS * 0.99;
+      // Largest uniform output scale of a cw x ch crop. It honours the per-edge canvas limit AND the pixel
+      // budget: otherwise the slider / presets offered sizes that the encoder always rejected at export time
+      function maxUniformScale(cw, ch) {
+        const bySide = Math.min(MAX_CANVAS_SIDE / cw, MAX_CANVAS_SIDE / ch);
+        let byBudget = Math.sqrt(SAFE_CANVAS_PIXELS / (cw * ch));
+        // The 1% headroom must not push a crop that already fits below its native size: 1:1 is exact
+        // (no rounding), so a crop within the budget can always be exported at 100%
+        if (cw * ch <= MAX_CANVAS_PIXELS) byBudget = Math.max(byBudget, 1);
+        return Math.min(bySide, byBudget);
+      }
+
       // keepStretch: the crop changed but the user's scale did not, so an unlocked (non-uniform)
       // width/height ratio must survive instead of snapping back to the crop's own aspect.
       function syncResizeFromCrop(scaleFactor = null, keepStretch = false) {
@@ -3819,11 +3832,17 @@
           let sy = keepStretch && !state.lockAspect && state.resizeScaleY ? state.resizeScaleY : scaleFactor;
           if (sy === sx) state.resizeScaleY = null;
           if (state.lockAspect || sy === sx) {
-            const maxUniform = Math.min(MAX_CANVAS_SIDE / cw, MAX_CANVAS_SIDE / ch);
+            const maxUniform = maxUniformScale(cw, ch);
             if (sx > maxUniform) sx = sy = maxUniform;
           } else {
             sx = Math.min(sx, MAX_CANVAS_SIDE / cw);
             sy = Math.min(sy, MAX_CANVAS_SIDE / ch);
+            const area = sx * sy * cw * ch;
+            if (area > SAFE_CANVAS_PIXELS) {
+              const k = Math.sqrt(SAFE_CANVAS_PIXELS / area);
+              sx *= k;
+              sy *= k;
+            }
             state.resizeScaleY = sy;
           }
           state.resizeScale = sx;
@@ -3860,7 +3879,7 @@
         const ch = Math.max(1, Math.round(state.cropH));
         const scaleX = state.targetW / cw;
         const scaleY = state.targetH / ch;
-        const maxUniform = Math.min(MAX_CANVAS_SIDE / cw, MAX_CANVAS_SIDE / ch);
+        const maxUniform = maxUniformScale(cw, ch);
         document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => {
           let match = false;
           if (c.dataset.scale) {
