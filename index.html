@@ -1242,6 +1242,8 @@
       font-weight: 600;
     }
     .slider-value-pill {
+      flex-shrink: 0;
+      white-space: nowrap; /* on phones the long compression label wrapped inside its pill; let the caption wrap instead */
       font-family: var(--font-mono);
       font-size: 12px;
       font-weight: 700;
