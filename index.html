@@ -4258,7 +4258,9 @@
       function setEncodePending(pending) {
         els.estimatedSizeLabel.classList.toggle("pending", pending);
         els.btnDownloadExport.disabled = pending || !state.hasImage || !state.outputBlob;
-        els.btnDownloadText.textContent = pending ? "编码中…" : "导出保存图片";
+        // Crop drags call this on every pointer move: only write the label when it really changes
+        const label = pending ? "编码中…" : "导出保存图片";
+        if (els.btnDownloadText.textContent !== label) els.btnDownloadText.textContent = label;
       }
 
       // Single-pass drawImage aliases badly on big reductions in engines that ignore
