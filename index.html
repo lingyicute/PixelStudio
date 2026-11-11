@@ -2374,7 +2374,9 @@
               const type = view.getUint32(offset + 4, false);
               if (offset + 12 + length > view.byteLength) break;
               if (type === 0x65584966) { // 'eXIf'
-                this._parseTiff(view, offset + 8, length, result);
+                // Some writers keep the "Exif\0\0" prefix in this chunk too: tolerate it as the WebP path does
+                const prefixed = length >= 6 && view.getUint32(offset + 8, false) === 0x45786966 && view.getUint16(offset + 12, false) === 0;
+                this._parseTiff(view, offset + 8 + (prefixed ? 6 : 0), length - (prefixed ? 6 : 0), result);
               } else if (type === 0x74455874) { // 'tEXt'
                 const chunkBytes = new Uint8Array(arrayBuffer, offset + 8, length);
                 const nullIdx = chunkBytes.indexOf(0);
