@@ -1340,19 +1340,26 @@
     .size-metric {
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
     .size-metric-label {
       font-size: 11px;
       color: var(--md-sys-color-on-surface-variant);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .size-metric-val {
       font-family: var(--font-mono);
       font-size: 16px;
       font-weight: 700;
       color: var(--md-sys-color-on-surface);
+      white-space: nowrap;
     }
 
     .delta-pill {
+      flex-shrink: 0;
+      white-space: nowrap;
       font-family: var(--font-mono);
       font-size: 12px;
       font-weight: 700;
@@ -1360,6 +1367,9 @@
       border-radius: var(--radius-full);
       background: var(--md-sys-color-success-container);
       color: var(--md-sys-color-on-success-container);
+    }
+    .delta-pill:empty {
+      display: none;
     }
     .delta-pill.increase {
       background: var(--md-sys-color-warning-container);
