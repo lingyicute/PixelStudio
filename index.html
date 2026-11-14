@@ -2747,7 +2747,7 @@
           if (!m) return "";
           const p = (v) => String(v || "0").padStart(2, "0");
           const y = +m[1], mo = +m[2], d = +m[3], h = +(m[4] || 0), mi = +m[5] || 0, se = +(m[6] || 0);
-          if (mo < 1 || mo > 12) return "";
+          if (y < 1 || mo < 1 || mo > 12) return "";
           const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
           const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
           if (d < 1 || d > daysInMonth || h > 23 || mi > 59 || se > 59) return "";
@@ -2762,6 +2762,23 @@
           return Number.isFinite(v) && v >= 1 ? Math.min(0xffffffff, Math.round(v)) : 0;
         },
 
+        // Positive 2-decimal number (FNumber / FocalLength, stored at scale = 100 within uint32 RATIONAL)
+        parsePositiveFixed(raw, maxVal = 42949672) {
+          const s = String(raw == null ? "" : raw).trim();
+          if (!s) return 0;
+          const v = Number(s);
+          if (!Number.isFinite(v)) return 0;
+          const rounded = Math.round(v * 100) / 100;
+          return rounded >= 0.01 && rounded <= maxVal ? rounded : 0;
+        },
+
+        parseGpsCoord(raw, limit) {
+          const s = String(raw == null ? "" : raw).trim();
+          if (!s) return NaN;
+          const v = Number(s);
+          return Number.isFinite(v) ? Math.max(-limit, Math.min(limit, v)) : NaN;
+        },
+
         // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
         buildTiffBuffer(meta, dims, forJpeg = false) {
           const encoder = new TextEncoder();
@@ -2774,13 +2791,13 @@
           const copyrightStr = (meta.copyright || "").trim();
           const descStr = (meta.description || "").trim();
 
-          const fNum = parseFloat(meta.fNumber);
+          const fNum = this.parsePositiveFixed(meta.fNumber);
           const rawExp = this.parseExposure(meta.exposureTime);
-          const expTime = rawExp > 0 && rawExp <= 3600 ? rawExp : NaN;
+          const expTime = rawExp >= 1e-6 && rawExp <= 3600 ? rawExp : NaN;
           const isoVal = this.parseIso(meta.iso);
-          const focalVal = parseFloat(meta.focalLength);
-          const latVal = parseFloat(meta.gpsLat);
-          const lngVal = parseFloat(meta.gpsLng);
+          const focalVal = this.parsePositiveFixed(meta.focalLength);
+          const latVal = this.parseGpsCoord(meta.gpsLat, 90);
+          const lngVal = this.parseGpsCoord(meta.gpsLng, 180);
 
           const hasDims = Boolean(dims && dims.w > 0 && dims.h > 0);
           const hasExifSub = Boolean(hasDims || dateTimeStr || fNum > 0 || expTime > 0 || isoVal > 0 || focalVal > 0);
@@ -2817,12 +2834,12 @@
             list.push({ tag, type, count, data: Uint8Array.from(bytes) });
           };
           const gcd = (x, y) => (y ? gcd(y, x % y) : x);
-          const addRational = (list, tag, floatVal, scale = 10000) => {
+          const addRational = (list, tag, floatVal, scale = 10000, allowUnitFraction = false) => {
             if (!(floatVal > 0) || !Number.isFinite(floatVal)) return;
             let num;
             let den;
             const inv = 1 / floatVal;
-            if (floatVal < 1 && Math.round(inv) >= 2 && Math.abs(inv - Math.round(inv)) / inv < 0.01) {
+            if (allowUnitFraction && floatVal < 1 && Math.round(inv) >= 2 && Math.abs(inv - Math.round(inv)) / inv < 0.01) {
               // Classic shutter fractions such as 1/125 s
               num = 1;
               den = Math.round(inv);
@@ -2867,7 +2884,7 @@
               addLong(exifIfd, 0xa002, dims.w); // PixelXDimension: tells readers the real output size
               addLong(exifIfd, 0xa003, dims.h); // PixelYDimension
             }
-            addRational(exifIfd, 0x829a, expTime, 1000000);
+            addRational(exifIfd, 0x829a, expTime, 1000000, true);
             addRational(exifIfd, 0x829d, fNum, 100);
             if (isoVal > 0) {
               // ISOSpeedRatings is a SHORT: 65535 means "overflow", the real value goes in the LONG
@@ -4548,12 +4565,12 @@
         readExifFromInputs();
         if (state.stripExif) return `${pixelKey}|strip`;
         const m = state.exif;
-        const fNum = parseFloat(m.fNumber);
+        const fNum = ExifEngine.parsePositiveFixed(m.fNumber);
         const exp = ExifEngine.parseExposure(m.exposureTime);
         const iso = ExifEngine.parseIso(m.iso);
-        const focal = parseFloat(m.focalLength);
-        const lat = parseFloat(m.gpsLat);
-        const lng = parseFloat(m.gpsLng);
+        const focal = ExifEngine.parsePositiveFixed(m.focalLength);
+        const lat = ExifEngine.parseGpsCoord(m.gpsLat, 90);
+        const lng = ExifEngine.parseGpsCoord(m.gpsLng, 180);
         return `${pixelKey}|${JSON.stringify([
           (m.make || "").trim(),
           (m.model || "").trim(),
@@ -4562,12 +4579,12 @@
           ExifEngine.normalizeDate(m.dateTime),
           (m.copyright || "").trim(),
           (m.description || "").trim(),
-          fNum > 0 ? fNum : 0,
-          exp > 0 && exp <= 3600 ? exp : 0,
+          fNum,
+          exp >= 1e-6 && exp <= 3600 ? exp : 0,
           iso,
-          focal > 0 ? focal : 0,
-          Number.isFinite(lat) ? Math.max(-90, Math.min(90, lat)) : "",
-          Number.isFinite(lng) ? Math.max(-180, Math.min(180, lng)) : ""
+          focal,
+          Number.isFinite(lat) ? lat : "",
+          Number.isFinite(lng) ? lng : ""
         ])}`;
       }
 
@@ -5522,8 +5539,14 @@
         // Coordinates outside the valid range used to be clamped silently on export: fix them visibly
         [[els.exifGpsLat, 90, "纬度"], [els.exifGpsLng, 180, "经度"]].forEach(([inp, limit, name]) => {
           inp.addEventListener("change", () => {
-            const v = parseFloat(inp.value);
-            if (Number.isFinite(v) && Math.abs(v) > limit) {
+            const raw = inp.value.trim();
+            if (!raw) return;
+            const v = Number(raw);
+            if (Number.isNaN(v)) {
+              inp.value = "";
+              readExifFromInputs();
+              scheduleOutputEncode();
+            } else if (Math.abs(v) > limit) {
               inp.value = String(Math.sign(v) * limit);
               readExifFromInputs();
               scheduleOutputEncode();
@@ -5534,9 +5557,12 @@
 
         [els.exifFNumber, els.exifFocal].forEach((inp) => {
           inp.addEventListener("change", () => {
-            const v = parseFloat(inp.value);
-            if (inp.value.trim() !== "" && !(v > 0)) {
-              inp.value = "";
+            const raw = inp.value.trim();
+            if (!raw) return;
+            const v = ExifEngine.parsePositiveFixed(raw);
+            const next = v > 0 ? String(v) : "";
+            if (inp.value !== next) {
+              inp.value = next;
               readExifFromInputs();
               scheduleOutputEncode();
             }
@@ -5560,7 +5586,7 @@
           const raw = els.exifExposure.value.trim();
           if (!raw) return;
           const v = ExifEngine.parseExposure(raw);
-          if (v > 0 && v <= 3600) {
+          if (v >= 1e-6 && v <= 3600) {
             els.exifExposure.value = ExifEngine.formatExposure(v);
             readExifFromInputs();
             scheduleOutputEncode();
