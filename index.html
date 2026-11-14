@@ -4085,7 +4085,7 @@
         sizeCanvas(els.previewCanvas, Math.round(dispW * dpr), Math.round(dispH * dpr));
 
         const ctx = els.previewCanvas.getContext("2d");
-        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingEnabled = state.resampleQuality !== "pixelated";
         ctx.imageSmoothingQuality = "high";
         ctx.clearRect(0, 0, els.previewCanvas.width, els.previewCanvas.height);
         if (state.compareMode) {
@@ -5381,6 +5381,8 @@
 
         els.selResample.addEventListener("change", () => {
           state.resampleQuality = els.selResample.value;
+          if (state.compareMode) renderCompareView();
+          else renderStageCanvas();
           scheduleOutputEncode();
         });
 
