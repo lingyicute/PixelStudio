@@ -2312,7 +2312,7 @@
                 <div class="segmented-group" id="formatSegmented">
                   <button class="segmented-btn active" data-format="image/jpeg">JPEG</button>
                   <button class="segmented-btn" data-format="image/png">PNG</button>
-                  <button class="segmented-btn" data-format="image/webp">WebP</button>
+                  <button class="segmented-btn" data-format="image/webp" id="btnFormatWebp">WebP</button>
                   <button class="segmented-btn" data-format="image/bmp">BMP</button>
                   <button class="segmented-btn" data-format="image/avif" id="btnFormatAvif" style="display:none;">AVIF</button>
                 </div>
@@ -3830,9 +3830,10 @@
       function applyDefaultOutputFormat(meta) {
         if (state.formatTouched) return;
         const ext = ((meta.fileName || "").match(/\.([a-z0-9]+)$/i) || [])[1];
+        const webpTarget = $("btnFormatWebp").style.display !== "none" ? "image/webp" : "image/png";
         const avifTarget = $("btnFormatAvif").style.display !== "none" ? "image/avif" : "image/png";
-        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp", "image/avif": avifTarget, "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
-        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", avif: avifTarget, gif: "image/png", svg: "image/png", bmp: "image/png" };
+        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/webp": webpTarget, "image/avif": avifTarget, "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
+        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: webpTarget, avif: avifTarget, gif: "image/png", svg: "image/png", bmp: "image/png" };
         const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()] || "image/jpeg";
         if (target !== state.outputFormat) {
           const btn = document.querySelector(`#formatSegmented .segmented-btn[data-format="${target}"]`);
@@ -4645,8 +4646,13 @@
               lastScheduledEncodeKey = null;
               showToast("当前浏览器不支持导出该格式，已自动回退为 PNG");
               if (requestedFormat === "image/avif") $("btnFormatAvif").style.display = "none";
+              if (requestedFormat === "image/webp") $("btnFormatWebp").style.display = "none";
               // Go through the real button so banner / matte row / compression mode stay consistent
               document.querySelector('#formatSegmented .segmented-btn[data-format="image/png"]').click();
+              if (!state.modeTouched && state.compressionMode !== "lossless") {
+                state.autoLosslessForPng = true;
+                document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
+              }
             } else {
               showToast("编码失败：输出尺寸过大或内存不足，请降低目标尺寸");
               clearOutput();
@@ -5522,10 +5528,24 @@
         });
 
         // 8. Format & Lossy/Lossless Compression Controls
-        // Detect browser AVIF encoding support dynamically
+        // Detect browser WebP & AVIF encoding support dynamically (Safari / WebKit lacks WebP export)
+        let canEncodeWebp = false;
+        try {
+          const testWebp = document.createElement("canvas");
+          testWebp.width = 1;
+          testWebp.height = 1;
+          canEncodeWebp = testWebp.toDataURL("image/webp").startsWith("data:image/webp");
+          releaseCanvas(testWebp);
+        } catch {
+          canEncodeWebp = false;
+        }
+        if (!canEncodeWebp) {
+          $("btnFormatWebp").style.display = "none";
+        }
         const testAvif = document.createElement("canvas");
         testAvif.width = 2; testAvif.height = 2;
         testAvif.toBlob((b) => {
+          releaseCanvas(testAvif);
           if (b && b.type === "image/avif") {
             $("btnFormatAvif").style.display = "flex";
           }
