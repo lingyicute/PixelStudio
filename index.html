@@ -1759,6 +1759,15 @@
       transition: opacity 0.15s;
     }
 
+    /* Landscape phones (>= 768px) and tablets still auto-zoom into < 16px inputs on iOS Safari */
+    @media (hover: none) and (pointer: coarse) {
+      .m3-field input,
+      .m3-field select,
+      #inpCompressionExact {
+        font-size: 16px;
+      }
+    }
+
     /* Let native controls (select popups, spinners, scrollbars, color input) follow the theme */
     :root { color-scheme: light; }
     [data-theme="dark"] { color-scheme: dark; }
