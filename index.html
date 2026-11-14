@@ -4311,10 +4311,12 @@
         if (nextKey === lastScheduledEncodeKey && (encodeTimer !== null || encodeInFlight || state.outputBlob !== null)) {
           return;
         }
-        // Reverting back to the already-encoded state before the debounce timer fires needs no re-encode
-        if (nextKey === lastCompletedEncodeKey && state.outputBlob !== null && encodeTimer !== null && !encodeInFlight) {
+        // Reverting back to the already-encoded state (during debounce, mid-encode, or after a crop drag) needs no re-encode
+        if (nextKey === lastCompletedEncodeKey && state.outputBlob !== null) {
           clearTimeout(encodeTimer);
           encodeTimer = null;
+          encodeSeq++;
+          encodeInFlight = false;
           lastScheduledEncodeKey = nextKey;
           setEncodePending(false);
           return;
