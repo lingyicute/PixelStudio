@@ -2487,15 +2487,18 @@
                 if (nullIdx > 0) {
                   const key = this._decodeText(chunkBytes.subarray(0, nullIdx));
                   const val = this._decodeText(chunkBytes.subarray(nullIdx + 1)).trim();
-                  if (val) {
-                    if ((key === "Author" || key === "Artist") && !result.artist) { result.artist = val; result.hasExif = true; }
-                    else if (key === "Software" && !result.software) { result.software = val; result.hasExif = true; }
-                    else if (key === "Copyright" && !result.copyright) { result.copyright = val; result.hasExif = true; }
-                    else if ((key === "Description" || key === "Comment") && !result.description) { result.description = val; result.hasExif = true; }
-                    else if (key === "Creation Time" && !result.dateTime) {
-                      const dt = this.normalizeDate(val);
-                      if (dt) { result.dateTime = dt; result.hasExif = true; }
-                    }
+                  this._applyTextMeta(key, val, result);
+                }
+              } else if (type === 0x69545874) { // 'iTXt' (uncompressed UTF-8 text)
+                const chunkBytes = new Uint8Array(arrayBuffer, offset + 8, length);
+                const nullIdx = chunkBytes.indexOf(0);
+                if (nullIdx > 0 && nullIdx + 4 <= chunkBytes.length && chunkBytes[nullIdx + 1] === 0) {
+                  const langEnd = chunkBytes.indexOf(0, nullIdx + 3);
+                  const transEnd = langEnd >= 0 ? chunkBytes.indexOf(0, langEnd + 1) : -1;
+                  if (transEnd >= 0) {
+                    const key = this._decodeText(chunkBytes.subarray(0, nullIdx));
+                    const val = this._decodeText(chunkBytes.subarray(transEnd + 1)).trim();
+                    this._applyTextMeta(key, val, result);
                   }
                 }
               } else if (type === 0x49454e44) { // 'IEND'
@@ -2521,6 +2524,18 @@
             }
           }
           return result;
+        },
+
+        _applyTextMeta(key, val, result) {
+          if (!val) return;
+          if ((key === "Author" || key === "Artist") && !result.artist) { result.artist = val; result.hasExif = true; }
+          else if (key === "Software" && !result.software) { result.software = val; result.hasExif = true; }
+          else if (key === "Copyright" && !result.copyright) { result.copyright = val; result.hasExif = true; }
+          else if ((key === "Description" || key === "Comment") && !result.description) { result.description = val; result.hasExif = true; }
+          else if (key === "Creation Time" && !result.dateTime) {
+            const dt = this.normalizeDate(val);
+            if (dt) { result.dateTime = dt; result.hasExif = true; }
+          }
         },
 
         // A corrupt entry must not throw away what was already read from the same block
@@ -2561,7 +2576,7 @@
           const count = view.getUint16(dirOffset, little);
           const typeSizes = [0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8, 4];
 
-          let gpsLatRef = "N", gpsLngRef = "E";
+          let gpsLatRef = null, gpsLngRef = null, gpsStatus = "";
           let gpsLatArr = null, gpsLngArr = null;
           let isoBase = 0, sensitivityType = 0;
           const isoExt = {};
@@ -2588,13 +2603,13 @@
             const isAscii = type === 2 || type === 1 || type === 7;
 
             if (group === "IFD0") {
-              if (tag === 0x010f && isAscii) out.make = this._readAscii(view, valOffset, numValues);
-              else if (tag === 0x0110 && isAscii) out.model = this._readAscii(view, valOffset, numValues);
-              else if (tag === 0x0131 && isAscii) out.software = this._readAscii(view, valOffset, numValues);
+              if (tag === 0x010f && isAscii) { const s = this._readAscii(view, valOffset, numValues); if (s) out.make = s; }
+              else if (tag === 0x0110 && isAscii) { const s = this._readAscii(view, valOffset, numValues); if (s) out.model = s; }
+              else if (tag === 0x0131 && isAscii) { const s = this._readAscii(view, valOffset, numValues); if (s) out.software = s; }
               else if (tag === 0x0132 && isAscii && !out.dateTime) out.dateTime = this._readDate(view, valOffset, numValues);
-              else if (tag === 0x013b && isAscii) out.artist = this._readAscii(view, valOffset, numValues);
-              else if (tag === 0x8298 && isAscii) out.copyright = this._readAscii(view, valOffset, numValues);
-              else if (tag === 0x010e && isAscii) out.description = this._readAscii(view, valOffset, numValues);
+              else if (tag === 0x013b && isAscii) { const s = this._readAscii(view, valOffset, numValues); if (s) out.artist = s; }
+              else if (tag === 0x8298 && isAscii) { const s = this._readAscii(view, valOffset, numValues); if (s) out.copyright = s; }
+              else if (tag === 0x010e && isAscii) { const s = this._readAscii(view, valOffset, numValues); if (s) out.description = s; }
               else if (tag === 0x8769 && isLong) ptrs.exifIfd = view.getUint32(valOffset, little);
               else if (tag === 0x8825 && isLong) ptrs.gpsIfd = view.getUint32(valOffset, little);
             } else if (group === "EXIF") {
@@ -2623,20 +2638,22 @@
                 if (r > 0) out.focalLength = String(Number(r.toFixed(2))); // as precise as the writer: phone lenses are 5.96 mm, not 6
               }
             } else if (group === "GPS") {
-              if (tag === 0x0001 && isAscii) gpsLatRef = this._readAscii(view, valOffset, numValues) || "N";
+              if (tag === 0x0001 && isAscii) gpsLatRef = this._readAscii(view, valOffset, numValues).toUpperCase();
               else if (tag === 0x0002 && numValues >= 3 && isRational) {
                 gpsLatArr = [
                   this._readRational(view, valOffset, little, isSigned),
                   this._readRational(view, valOffset + 8, little, isSigned),
                   this._readRational(view, valOffset + 16, little, isSigned)
                 ];
-              } else if (tag === 0x0003 && isAscii) gpsLngRef = this._readAscii(view, valOffset, numValues) || "E";
+              } else if (tag === 0x0003 && isAscii) gpsLngRef = this._readAscii(view, valOffset, numValues).toUpperCase();
               else if (tag === 0x0004 && numValues >= 3 && isRational) {
                 gpsLngArr = [
                   this._readRational(view, valOffset, little, isSigned),
                   this._readRational(view, valOffset + 8, little, isSigned),
                   this._readRational(view, valOffset + 16, little, isSigned)
                 ];
+              } else if (tag === 0x0009 && isAscii) {
+                gpsStatus = this._readAscii(view, valOffset, numValues).toUpperCase();
               }
             }
           }
@@ -2655,16 +2672,20 @@
             else if (isoBase > 0) out.iso = String(isoBase);
           }
 
-          if (group === "GPS") {
+          if (group === "GPS" && gpsStatus !== "V") {
             if (gpsLatArr && gpsLatArr.every((v) => v >= 0)) {
               let deg = gpsLatArr[0] + gpsLatArr[1] / 60 + gpsLatArr[2] / 3600;
-              if (gpsLatRef.toUpperCase().startsWith("S")) deg = -deg;
-              if (Number.isFinite(deg) && Math.abs(deg) <= 90) out.gpsLat = String(Number(deg.toFixed(6)));
+              if (!(gpsLatRef === "" && deg === 0)) {
+                if ((gpsLatRef || "N").startsWith("S")) deg = -deg;
+                if (Number.isFinite(deg) && Math.abs(deg) <= 90) out.gpsLat = String(Number(deg.toFixed(6)));
+              }
             }
             if (gpsLngArr && gpsLngArr.every((v) => v >= 0)) {
               let deg = gpsLngArr[0] + gpsLngArr[1] / 60 + gpsLngArr[2] / 3600;
-              if (gpsLngRef.toUpperCase().startsWith("W")) deg = -deg;
-              if (Number.isFinite(deg) && Math.abs(deg) <= 180) out.gpsLng = String(Number(deg.toFixed(6)));
+              if (!(gpsLngRef === "" && deg === 0)) {
+                if ((gpsLngRef || "E").startsWith("W")) deg = -deg;
+                if (Number.isFinite(deg) && Math.abs(deg) <= 180) out.gpsLng = String(Number(deg.toFixed(6)));
+              }
             }
           }
 
@@ -3117,7 +3138,7 @@
             const type = view.getUint32(pos + 4, false);
             const nextPos = pos + 12 + len;
             if (nextPos > pngBytes.length) break;
-            if (type === 0x65584966 || (stripExif && type === 0x74455874)) {
+            if (type === 0x65584966 || (stripExif && (type === 0x74455874 || type === 0x7a545874 || type === 0x69545874 || type === 0x74494d45))) {
               removedAny = true;
               pos = nextPos;
               continue;
@@ -3163,13 +3184,13 @@
           if (chunks.length === 0) return webpBytes;
 
           let vp8x = chunks.find((c) => c.fourcc === "VP8X");
-          const body = chunks.filter((c) => c.fourcc !== "VP8X" && c.fourcc !== "EXIF");
+          const body = chunks.filter((c) => c.fourcc !== "VP8X" && c.fourcc !== "EXIF" && (!stripExif || c.fourcc !== "XMP "));
           let ordered;
           if (stripExif) {
-            if (!chunks.some((c) => c.fourcc === "EXIF")) return webpBytes;
+            if (!chunks.some((c) => c.fourcc === "EXIF" || c.fourcc === "XMP ")) return webpBytes;
             if (vp8x && vp8x.payload.length >= 10) {
               const p = new Uint8Array(vp8x.payload);
-              p[0] &= ~0x08; // Clear E (EXIF) flag
+              p[0] &= ~(0x08 | 0x04); // Clear EXIF & XMP flags
               ordered = [{ fourcc: "VP8X", payload: p }, ...body];
             } else {
               ordered = body;
