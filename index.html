@@ -3734,6 +3734,7 @@
         rawEncodeCache = null;
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
+        outputGeometryKey = null;
         encodeInFlight = false;
         state.hasImage = true;
         state.sourceImg = safe.source;
@@ -3912,7 +3913,8 @@
 
         syncCropInputs();
         syncResizeInputs();
-        renderStageCanvas();
+        if (state.compareMode) renderCompareView();
+        else renderStageCanvas();
         scheduleOutputEncode();
       }
 
@@ -4185,7 +4187,7 @@
         state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
         syncCropInputs();
         syncResizeFromCrop(state.resizeScale, true);
-        if (state.compareMode) renderStageCanvas();
+        if (state.compareMode) renderCompareView();
         else updateCropBoxVisual();
         scheduleOutputEncode();
       });
@@ -4358,7 +4360,7 @@
         syncCropInputs();
         const currentScale = state.resizeScale;
         syncResizeFromCrop(currentScale, true);
-        if (state.compareMode) renderStageCanvas();
+        if (state.compareMode) renderCompareView();
         else updateCropBoxVisual();
         scheduleOutputEncode();
       }
@@ -4370,6 +4372,7 @@
       let encodeSeq = 0; // Monotonic token: results of superseded (older) encodes are discarded
       let lastScheduledEncodeKey = null;
       let lastCompletedEncodeKey = null;
+      let outputGeometryKey = null;
       let encodeInFlight = false;
 
       // The result on screen no longer matches the settings (e.g. mid crop drag): block export of the
@@ -4398,6 +4401,7 @@
           encodeInFlight = false;
           lastScheduledEncodeKey = nextKey;
           setEncodePending(false);
+          if (state.compareMode) renderCompareView();
           return;
         }
         lastScheduledEncodeKey = nextKey;
@@ -4431,6 +4435,7 @@
         state.outputBlob = null;
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
+        outputGeometryKey = null;
         encodeInFlight = false;
         compareAfterCache = null;
         els.estimatedSizeLabel.textContent = "-- KB";
@@ -4494,6 +4499,14 @@
       // EXIF edits then skip the (slow) draw + compress step and only rewrite the metadata.
       let rawEncodeCache = null; // { key, blob }
       let imageSerial = 0;       // Bumped for every loaded image so a new picture never hits the cache
+
+      function buildGeometryKey(outW, outH) {
+        return JSON.stringify([
+          imageSerial, state.rotation, state.flipH, state.flipV,
+          Math.round(state.cropX), Math.round(state.cropY), Math.round(state.cropW), Math.round(state.cropH),
+          outW, outH
+        ]);
+      }
 
       function buildPixelKey(outW, outH) {
         // Only settings that actually reach the encoder belong in the key: the matte colour only matters
@@ -4714,6 +4727,7 @@
         state.outputBlob = blob;
         state.outputUrl = URL.createObjectURL(blob);
         lastCompletedEncodeKey = lastScheduledEncodeKey;
+        outputGeometryKey = buildGeometryKey(outW, outH);
         compareAfterCache = null; // Stale decoded copy of the previous output
         setEncodePending(false);
 
@@ -4776,11 +4790,13 @@
         // Stage is re-fitted to the OUTPUT aspect ratio and the "before" (cropped source) half is painted
         renderStageCanvas();
 
-        if (!state.outputUrl || !state.outputBlob) {
-          // No (valid) encoded result yet or the encode failed: never leave a stale "after" image behind
+        const outW = Math.max(1, Math.round(state.targetW));
+        const outH = Math.max(1, Math.round(state.targetH));
+        if (!state.outputUrl || !state.outputBlob || outputGeometryKey !== buildGeometryKey(outW, outH)) {
+          // No (valid) encoded result yet, geometry changed, or the encode failed: never leave a stale "after" image behind
           const aCanvas = els.compareAfterCanvas;
           aCanvas.getContext("2d").clearRect(0, 0, aCanvas.width, aCanvas.height);
-          els.compareRightLabel.textContent = "输出预览";
+          els.compareRightLabel.textContent = (encodeTimer !== null || encodeInFlight) ? "编码中…" : "输出预览";
           return;
         }
 
@@ -5239,7 +5255,7 @@
           syncCropInputs();
           const currentScale = state.resizeScale;
           syncResizeFromCrop(currentScale, true);
-          if (state.compareMode) renderStageCanvas();
+          if (state.compareMode) renderCompareView();
           else updateCropBoxVisual();
           scheduleOutputEncode();
         };
@@ -5253,7 +5269,7 @@
           state.cropX = Math.round((state.rotW - state.cropW) / 2);
           state.cropY = Math.round((state.rotH - state.cropH) / 2);
           syncCropInputs();
-          if (state.compareMode) renderStageCanvas();
+          if (state.compareMode) renderCompareView();
           else updateCropBoxVisual();
           scheduleOutputEncode();
         });
@@ -5272,7 +5288,7 @@
           }
           syncCropInputs();
           syncResizeFromCrop(state.resizeScale, true);
-          if (state.compareMode) renderStageCanvas();
+          if (state.compareMode) renderCompareView();
           else updateCropBoxVisual();
           scheduleOutputEncode();
         });
@@ -5300,7 +5316,7 @@
                 state.targetH = h;
                 state.resizeScale = scale;
                 syncResizeInputs();
-                if (state.compareMode) renderStageCanvas();
+                if (state.compareMode) renderCompareView();
                 scheduleOutputEncode();
               }
             }
@@ -5318,7 +5334,7 @@
           els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
           els.scalePercentBadge.textContent = `${pct}%`;
           syncResizePresetChips();
-          if (state.compareMode) renderStageCanvas();
+          if (state.compareMode) renderCompareView();
           scheduleOutputEncode();
         };
 
@@ -5374,7 +5390,7 @@
           // A size limit can cap the scale below the thumb: move the thumb back to the applied value
           const applied = Math.round(state.resizeScale * 100);
           if (applied < pct) els.sliderScalePercent.value = applied;
-          if (state.compareMode) renderStageCanvas();
+          if (state.compareMode) renderCompareView();
           scheduleOutputEncode();
         });
 
@@ -5391,7 +5407,7 @@
               const s = targetW / Math.max(1, state.cropW);
               syncResizeFromCrop(s);
             }
-            if (state.compareMode) renderStageCanvas();
+            if (state.compareMode) renderCompareView();
             scheduleOutputEncode();
           });
         });
@@ -5399,7 +5415,7 @@
         $("btnResetResize").addEventListener("click", () => {
           if (!state.hasImage) return;
           syncResizeFromCrop(1);
-          if (state.compareMode) renderStageCanvas();
+          if (state.compareMode) renderCompareView();
           scheduleOutputEncode();
         });
 
