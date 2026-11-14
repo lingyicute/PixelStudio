@@ -4375,6 +4375,10 @@
               const k = Math.min(Math.sqrt(MAX_CANVAS_PIXELS / (nw * nh)), MAX_CANVAS_SIDE / Math.max(nw, nh));
               nw = Math.max(dw, Math.floor(nw * k));
               nh = Math.max(dh, Math.floor(nh * k));
+              if (nw * nh > MAX_CANVAS_PIXELS) {
+                if (nh === dh) nw = Math.max(dw, Math.floor(MAX_CANVAS_PIXELS / nh));
+                if (nw * nh > MAX_CANVAS_PIXELS) nh = Math.max(dh, Math.floor(MAX_CANVAS_PIXELS / nw));
+              }
             }
             const tmp = document.createElement("canvas");
             tmp.width = nw;
