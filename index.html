@@ -1074,7 +1074,7 @@
 
     .segmented-btn {
       flex: 1;
-      height: 38px;
+      min-height: 38px;
       border: none;
       background: transparent;
       color: var(--md-sys-color-on-surface);
@@ -1086,7 +1086,10 @@
       gap: 5px;
       cursor: pointer;
       transition: background-color 0.18s, color 0.18s;
-      padding: 0 8px;
+      padding: 6px 8px;
+    }
+    .segmented-btn svg {
+      flex-shrink: 0;
     }
     /* Dividers are drawn between neighbours, not as right borders: the hidden AVIF button is the last child,
        so a :last-child rule would leave a stray border on BMP wherever AVIF is unavailable */
