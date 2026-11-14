@@ -4174,8 +4174,8 @@
             h = Math.max(minH, Math.min(roomH, h));
           }
         }
-        w = Math.max(minW, Math.min(state.rotW, Math.round(w)));
-        h = Math.max(minH, Math.min(state.rotH, Math.round(h)));
+        w = Math.max(1, Math.min(state.rotW, Math.round(w)));
+        h = Math.max(1, Math.min(state.rotH, Math.round(h)));
         x = Math.max(0, Math.min(state.rotW - w, Math.round(x)));
         y = Math.max(0, Math.min(state.rotH - h, Math.round(y)));
         state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
@@ -4294,8 +4294,8 @@
           }
         }
 
-        state.cropW = Math.max(minW, Math.min(state.rotW, Math.round(nw)));
-        state.cropH = Math.max(minH, Math.min(state.rotH, Math.round(nh)));
+        state.cropW = Math.max(1, Math.min(state.rotW, Math.round(nw)));
+        state.cropH = Math.max(1, Math.min(state.rotH, Math.round(nh)));
         state.cropX = Math.max(0, Math.min(state.rotW - state.cropW, Math.round(nx)));
         state.cropY = Math.max(0, Math.min(state.rotH - state.cropH, Math.round(ny)));
 
@@ -5181,8 +5181,8 @@
         const handleNumericCropChange = (e) => {
           if (!state.hasImage) return;
           const target = e && e.target;
-          const minW = Math.min(16, state.rotW);
-          const minH = Math.min(16, state.rotH);
+          const minW = 1;
+          const minH = 1;
           // A field left empty keeps its current value instead of collapsing the selection to the minimum
           const read = (inp, current) => {
             const v = parseInt(inp.value, 10);
