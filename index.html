@@ -2528,6 +2528,8 @@
 
           let gpsLatRef = "N", gpsLngRef = "E";
           let gpsLatArr = null, gpsLngArr = null;
+          let isoBase = 0, sensitivityType = 0;
+          const isoExt = {};
 
           for (let i = 0; i < count; i++) {
             const entryOffset = dirOffset + 2 + i * 12;
@@ -2575,11 +2577,12 @@
                 if (r > 0) out.fNumber = String(Number(r.toFixed(2)));
               } else if (tag === 0x8827) {
                 const iso = this._readUint(view, valOffset, type, numValues, little);
-                if (iso > 0) out.iso = String(iso);
-              } else if ((tag === 0x8831 || tag === 0x8832 || tag === 0x8833) && (!out.iso || out.iso === "65535")) {
-                // Overflowed or modern ISO: the value lives in SOS / RecommendedExposureIndex / ISOSpeed
-                const rei = this._readUint(view, valOffset, type, numValues, little);
-                if (rei > (out.iso === "65535" ? 65535 : 0)) out.iso = String(rei);
+                if (iso > 0) isoBase = iso;
+              } else if (tag === 0x8830) {
+                sensitivityType = this._readUint(view, valOffset, type, numValues, little);
+              } else if (tag === 0x8831 || tag === 0x8832 || tag === 0x8833) {
+                const val = this._readUint(view, valOffset, type, numValues, little);
+                if (val > 0) isoExt[tag] = val;
               } else if (tag === 0x920a && isRational) {
                 const r = this._readRational(view, valOffset, little, isSigned);
                 if (r > 0) out.focalLength = String(Number(r.toFixed(2))); // as precise as the writer: phone lenses are 5.96 mm, not 6
@@ -2601,6 +2604,20 @@
                 ];
               }
             }
+          }
+
+          if (group === "EXIF") {
+            const prefOrder =
+              sensitivityType === 2 || sensitivityType === 6
+                ? [0x8832, 0x8833, 0x8831]
+                : sensitivityType === 3
+                  ? [0x8833, 0x8832, 0x8831]
+                  : [0x8831, 0x8832, 0x8833];
+            const minExt = isoBase === 65535 ? 65535 : 0;
+            const extVal = prefOrder.map((t) => isoExt[t] || 0).find((v) => v > minExt) || 0;
+            if (isoBase > 0 && isoBase !== 65535) out.iso = String(isoBase);
+            else if (extVal > 0) out.iso = String(extVal);
+            else if (isoBase > 0) out.iso = String(isoBase);
           }
 
           if (group === "GPS") {
