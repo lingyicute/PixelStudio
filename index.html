@@ -4294,14 +4294,24 @@
           }
         }
 
-        state.cropW = Math.max(1, Math.min(state.rotW, Math.round(nw)));
-        state.cropH = Math.max(1, Math.min(state.rotH, Math.round(nh)));
-        state.cropX = Math.max(0, Math.min(state.rotW - state.cropW, Math.round(nx)));
-        state.cropY = Math.max(0, Math.min(state.rotH - state.cropH, Math.round(ny)));
+        const nextW = Math.max(1, Math.min(state.rotW, Math.round(nw)));
+        const nextH = Math.max(1, Math.min(state.rotH, Math.round(nh)));
+        const nextX = Math.max(0, Math.min(state.rotW - nextW, Math.round(nx)));
+        const nextY = Math.max(0, Math.min(state.rotH - nextH, Math.round(ny)));
+        if (nextX === state.cropX && nextY === state.cropY && nextW === state.cropW && nextH === state.cropH) return;
+        const sizeChanged = nextW !== state.cropW || nextH !== state.cropH;
+        state.cropW = nextW;
+        state.cropH = nextH;
+        state.cropX = nextX;
+        state.cropY = nextY;
 
-        syncCropInputs();
-        const currentScale = state.resizeScale;
-        syncResizeFromCrop(currentScale, true);
+        if (sizeChanged) {
+          syncCropInputs();
+          syncResizeFromCrop(state.resizeScale, true);
+        } else {
+          els.inpCropX.value = nextX;
+          els.inpCropY.value = nextY;
+        }
         updateCropBoxVisual();
       });
 
