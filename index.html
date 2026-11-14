@@ -2937,6 +2937,7 @@
           // Drop any existing APP1 (0xFFE1) segments (EXIF / XMP) after SOI
           const chunks = [new Uint8Array([0xff, 0xd8])];
           let pos = 2;
+          let removedAny = false;
           while (pos + 4 <= jpegBytes.length) {
             const m1 = jpegBytes[pos];
             const m2 = jpegBytes[pos + 1];
@@ -2970,12 +2971,15 @@
             // Skip existing APP1 (0xE1) if we are stripping or replacing EXIF
             if (m2 !== 0xe1) {
               chunks.push(jpegBytes.subarray(pos, nextPos));
+            } else {
+              removedAny = true;
             }
             pos = nextPos;
           }
           if (pos < jpegBytes.length) {
             chunks.push(jpegBytes.subarray(pos));
           }
+          if (stripExif && !removedAny) return jpegBytes;
 
           if (!stripExif) {
             const tiffBytes = this.buildTiffBuffer(meta, dims, true);
@@ -4592,18 +4596,21 @@
           if (requestedFormat === "image/jpeg") {
             const buf = await rawBlob.arrayBuffer();
             if (seq !== encodeSeq) return;
-            const processed = ExifEngine.processJpegBytes(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
-            finalBlob = new Blob([processed], { type: "image/jpeg" });
+            const bytes = new Uint8Array(buf);
+            const processed = ExifEngine.processJpegBytes(bytes, state.stripExif, state.exif, { w: outW, h: outH });
+            if (processed !== bytes) finalBlob = new Blob([processed], { type: "image/jpeg" });
           } else if (requestedFormat === "image/png") {
             const buf = await rawBlob.arrayBuffer();
             if (seq !== encodeSeq) return;
-            const processed = ExifEngine.injectPngExif(new Uint8Array(buf), state.stripExif, state.exif, { w: outW, h: outH });
-            finalBlob = new Blob([processed], { type: "image/png" });
+            const bytes = new Uint8Array(buf);
+            const processed = ExifEngine.injectPngExif(bytes, state.stripExif, state.exif, { w: outW, h: outH });
+            if (processed !== bytes) finalBlob = new Blob([processed], { type: "image/png" });
           } else if (requestedFormat === "image/webp") {
             const buf = await rawBlob.arrayBuffer();
             if (seq !== encodeSeq) return;
-            const processed = ExifEngine.injectWebpExif(new Uint8Array(buf), state.stripExif, state.exif, outW, outH);
-            finalBlob = new Blob([processed], { type: "image/webp" });
+            const bytes = new Uint8Array(buf);
+            const processed = ExifEngine.injectWebpExif(bytes, state.stripExif, state.exif, outW, outH);
+            if (processed !== bytes) finalBlob = new Blob([processed], { type: "image/webp" });
           }
         } catch (err) {
           console.warn("EXIF 写入失败，已输出不含元数据的文件", err);
