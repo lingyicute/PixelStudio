@@ -3663,6 +3663,9 @@
         cropDragState = null;
         compareDragPointer = null;
         imageSerial++;
+        clearTimeout(encodeTimer);
+        encodeTimer = null;
+        encodeSeq++;
         rawEncodeCache = null;
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
@@ -4335,6 +4338,9 @@
 
       // Drop the last encoded result so a failed encode can never export a stale file
       function clearOutput() {
+        clearTimeout(encodeTimer);
+        encodeTimer = null;
+        encodeSeq++;
         if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
         state.outputUrl = null;
         state.outputBlob = null;
