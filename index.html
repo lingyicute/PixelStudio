@@ -4380,6 +4380,7 @@
                 if (nw * nh > MAX_CANVAS_PIXELS) nh = Math.max(dh, Math.floor(MAX_CANVAS_PIXELS / nw));
               }
             }
+            if ((nw === dw && nh === dh) || (nw === cw && nh === ch)) break;
             const tmp = document.createElement("canvas");
             tmp.width = nw;
             tmp.height = nh;
