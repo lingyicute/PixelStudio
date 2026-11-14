@@ -5184,16 +5184,13 @@
             if (state.hasImage && state.cropW > 0 && state.cropH > 0) {
               const cw = Math.max(1, Math.round(state.cropW));
               const ch = Math.max(1, Math.round(state.cropH));
-              let w = Math.round(state.targetW);
-              let h = Math.max(1, Math.round(w * (ch / cw)));
-              if (h > MAX_CANVAS_SIDE) {
-                h = MAX_CANVAS_SIDE;
-                w = Math.max(1, Math.round(h * (cw / ch)));
-              }
+              const scale = Math.min(Math.round(state.targetW) / cw, maxUniformScale(cw, ch));
+              const w = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(cw * scale)));
+              const h = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(ch * scale)));
               if (h !== Math.round(state.targetH) || w !== Math.round(state.targetW)) {
                 state.targetW = w;
                 state.targetH = h;
-                state.resizeScale = w / cw;
+                state.resizeScale = scale;
                 syncResizeInputs();
                 if (state.compareMode) renderStageCanvas();
                 scheduleOutputEncode();
