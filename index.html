@@ -3716,7 +3716,7 @@
       function initWorkspaceWithImage(img, meta) {
         const safe = ensureSafeSource(img);
         // Free the previous working canvases right away: big canvases are scarce on mobile browsers
-        releaseCanvas(state.transformedCanvas);
+        if (state.transformedCanvas && state.transformedCanvas !== safe.source) releaseCanvas(state.transformedCanvas);
         if (state.sourceImg instanceof HTMLCanvasElement && state.sourceImg !== safe.source) releaseCanvas(state.sourceImg);
         if (state.outputUrl) {
           URL.revokeObjectURL(state.outputUrl);
@@ -3859,30 +3859,33 @@
         // doubles the peak memory, which is what makes big photos fail on phones
         const previousCanvas = state.transformedCanvas;
         state.transformedCanvas = null;
-        releaseCanvas(previousCanvas);
+        if (previousCanvas && previousCanvas !== state.sourceImg) releaseCanvas(previousCanvas);
 
-        const tc = document.createElement("canvas");
-        tc.width = rotW;
-        tc.height = rotH;
-        const ctx = tc.getContext("2d");
-        if (!ctx) {
-          releaseCanvas(tc);
-          showToast("无法创建画布，可能是内存不足");
-          clearOutput();
-          setEncodePending(false);
-          return;
+        if (state.rotation === 0 && !state.flipH && !state.flipV && state.sourceImg instanceof HTMLCanvasElement) {
+          state.transformedCanvas = state.sourceImg;
+        } else {
+          const tc = document.createElement("canvas");
+          tc.width = rotW;
+          tc.height = rotH;
+          const ctx = tc.getContext("2d");
+          if (!ctx) {
+            releaseCanvas(tc);
+            showToast("无法创建画布，可能是内存不足");
+            clearOutput();
+            setEncodePending(false);
+            return;
+          }
+
+          // Exact integer matrix: Math.cos(π/2) is not 0, and a 1e-16 skew can make the browser
+          // resample (blur) the edges of a quarter turn. Smoothing off keeps this step bit-exact.
+          const [cs, sn] = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] }[state.rotation] || [1, 0];
+          const fx = state.flipH ? -1 : 1;
+          const fy = state.flipV ? -1 : 1;
+          ctx.imageSmoothingEnabled = false;
+          ctx.setTransform(cs * fx, sn * fx, -sn * fy, cs * fy, rotW / 2, rotH / 2);
+          ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
+          state.transformedCanvas = tc;
         }
-
-        // Exact integer matrix: Math.cos(π/2) is not 0, and a 1e-16 skew can make the browser
-        // resample (blur) the edges of a quarter turn. Smoothing off keeps this step bit-exact.
-        const [cs, sn] = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] }[state.rotation] || [1, 0];
-        const fx = state.flipH ? -1 : 1;
-        const fy = state.flipV ? -1 : 1;
-        ctx.imageSmoothingEnabled = false;
-        ctx.setTransform(cs * fx, sn * fx, -sn * fy, cs * fy, rotW / 2, rotH / 2);
-        ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
-
-        state.transformedCanvas = tc;
         state.rotW = rotW;
         state.rotH = rotH;
 
@@ -4579,49 +4582,54 @@
           return;
         }
 
-        // Fill background matte if target format has no alpha channel (JPEG / BMP)
-        if (state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp") {
-          ctx.fillStyle = state.matteColor;
-          ctx.fillRect(0, 0, outW, outH);
-        }
-
-        // Configure resampling quality
-        if (state.resampleQuality === "pixelated") {
-          ctx.imageSmoothingEnabled = false;
-        } else {
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = state.resampleQuality; // 'high' or 'medium'
-        }
-
-        // Draw exact cropped source region into target output dimensions
-        drawResampled(
-          ctx,
-          state.transformedCanvas,
-          Math.round(state.cropX),
-          Math.round(state.cropY),
-          Math.round(state.cropW),
-          Math.round(state.cropH),
-          outW,
-          outH,
-          state.resampleQuality
-        );
-
         const isLossless = state.compressionMode === "lossless";
         const quality = isLossless ? 1.0 : Math.max(0.01, Math.min(0.99, (100 - state.compressionRate) / 100));
 
-        // Handle BMP natively via pure JS encoder
-        if (state.outputFormat === "image/bmp") {
-          const imgData = ctx.getImageData(0, 0, outW, outH);
-          const bmpBlob = CodecHelper.encodeBmp(imgData);
-          releaseCanvas(outCanvas);
-          rawEncodeCache = { key: pixelKey, blob: bmpBlob };
-          finalizeOutputBlob(bmpBlob, outW, outH);
-          return;
-        }
+        try {
+          // Fill background matte if target format has no alpha channel (JPEG / BMP)
+          if (state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp") {
+            ctx.fillStyle = state.matteColor;
+            ctx.fillRect(0, 0, outW, outH);
+          }
 
-        // If PNG + Lossy mode is chosen, perform perceptual color quantization so compression slider genuinely reduces size
-        if (state.outputFormat === "image/png" && !isLossless) {
-          CodecHelper.quantizeCanvasForLossyPng(ctx, outW, outH, quality);
+          // Configure resampling quality
+          if (state.resampleQuality === "pixelated") {
+            ctx.imageSmoothingEnabled = false;
+          } else {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = state.resampleQuality; // 'high' or 'medium'
+          }
+
+          // Draw exact cropped source region into target output dimensions
+          drawResampled(
+            ctx,
+            state.transformedCanvas,
+            Math.round(state.cropX),
+            Math.round(state.cropY),
+            Math.round(state.cropW),
+            Math.round(state.cropH),
+            outW,
+            outH,
+            state.resampleQuality
+          );
+
+          // Handle BMP natively via pure JS encoder; release outCanvas before allocating the BMP buffer
+          if (state.outputFormat === "image/bmp") {
+            const imgData = ctx.getImageData(0, 0, outW, outH);
+            releaseCanvas(outCanvas);
+            const bmpBlob = CodecHelper.encodeBmp(imgData);
+            rawEncodeCache = { key: pixelKey, blob: bmpBlob };
+            finalizeOutputBlob(bmpBlob, outW, outH);
+            return;
+          }
+
+          // If PNG + Lossy mode is chosen, perform perceptual color quantization so compression slider genuinely reduces size
+          if (state.outputFormat === "image/png" && !isLossless) {
+            CodecHelper.quantizeCanvasForLossyPng(ctx, outW, outH, quality);
+          }
+        } catch (err) {
+          releaseCanvas(outCanvas);
+          throw err;
         }
 
         outCanvas.toBlob(async (rawBlob) => {
