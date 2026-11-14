@@ -3765,8 +3765,9 @@
       function applyDefaultOutputFormat(meta) {
         if (state.formatTouched) return;
         const ext = ((meta.fileName || "").match(/\.([a-z0-9]+)$/i) || [])[1];
-        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp", "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
-        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/png", svg: "image/png", bmp: "image/png" };
+        const avifTarget = $("btnFormatAvif").style.display !== "none" ? "image/avif" : "image/png";
+        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp", "image/avif": avifTarget, "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
+        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", avif: avifTarget, gif: "image/png", svg: "image/png", bmp: "image/png" };
         const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()] || "image/jpeg";
         if (target !== state.outputFormat) {
           const btn = document.querySelector(`#formatSegmented .segmented-btn[data-format="${target}"]`);
