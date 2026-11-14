@@ -3752,7 +3752,10 @@
           ch.classList.toggle("active", ch.dataset.ratio === "free");
         });
 
+        // Avoid firing spurious encodes with stale/zero dimensions while auto-selecting format and mode
+        state.hasImage = false;
         applyDefaultOutputFormat(meta);
+        state.hasImage = true;
         rebuildTransformedSource(true);
       }
 
