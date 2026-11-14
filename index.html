@@ -2702,6 +2702,14 @@
           return `${m[1]}:${p(mo)}:${p(d)} ${p(h)}:${p(mi)}:${p(se)}`;
         },
 
+        // Accept integers, decimals and scientific notation (e.g. "1e5" in <input type="number">)
+        parseIso(raw) {
+          const s = String(raw == null ? "" : raw).trim();
+          if (!s) return 0;
+          const v = Number(s);
+          return Number.isFinite(v) && v >= 1 ? Math.min(0xffffffff, Math.round(v)) : 0;
+        },
+
         // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
         buildTiffBuffer(meta, dims, forJpeg = false) {
           const encoder = new TextEncoder();
@@ -2717,7 +2725,7 @@
           const fNum = parseFloat(meta.fNumber);
           const rawExp = this.parseExposure(meta.exposureTime);
           const expTime = rawExp > 0 && rawExp <= 3600 ? rawExp : NaN;
-          const isoVal = parseInt(meta.iso, 10);
+          const isoVal = this.parseIso(meta.iso);
           const focalVal = parseFloat(meta.focalLength);
           const latVal = parseFloat(meta.gpsLat);
           const lngVal = parseFloat(meta.gpsLng);
@@ -4445,7 +4453,7 @@
         const m = state.exif;
         const fNum = parseFloat(m.fNumber);
         const exp = ExifEngine.parseExposure(m.exposureTime);
-        const iso = parseInt(m.iso, 10);
+        const iso = ExifEngine.parseIso(m.iso);
         const focal = parseFloat(m.focalLength);
         const lat = parseFloat(m.gpsLat);
         const lng = parseFloat(m.gpsLng);
@@ -4459,7 +4467,7 @@
           (m.description || "").trim(),
           fNum > 0 ? fNum : 0,
           exp > 0 && exp <= 3600 ? exp : 0,
-          iso > 0 ? Math.min(0xffffffff, iso) : 0,
+          iso,
           focal > 0 ? focal : 0,
           Number.isFinite(lat) ? Math.max(-90, Math.min(90, lat)) : "",
           Number.isFinite(lng) ? Math.max(-180, Math.min(180, lng)) : ""
@@ -5386,7 +5394,7 @@
           });
         });
 
-        [els.exifFNumber, els.exifIso, els.exifFocal].forEach((inp) => {
+        [els.exifFNumber, els.exifFocal].forEach((inp) => {
           inp.addEventListener("change", () => {
             const v = parseFloat(inp.value);
             if (inp.value.trim() !== "" && !(v > 0)) {
@@ -5395,6 +5403,18 @@
               scheduleOutputEncode();
             }
           });
+        });
+
+        els.exifIso.addEventListener("change", () => {
+          const raw = els.exifIso.value.trim();
+          if (!raw) return;
+          const iso = ExifEngine.parseIso(raw);
+          const next = iso > 0 ? String(iso) : "";
+          if (els.exifIso.value !== next) {
+            els.exifIso.value = next;
+            readExifFromInputs();
+            scheduleOutputEncode();
+          }
         });
 
         // Accept "1/125" style shutter speeds; normalize to a canonical text once editing is done
