@@ -3958,24 +3958,22 @@
       function syncResizePresetChips() {
         const cw = Math.max(1, Math.round(state.cropW));
         const ch = Math.max(1, Math.round(state.cropH));
+        const tw = Math.round(state.targetW);
+        const th = Math.round(state.targetH);
         const scaleX = state.targetW / cw;
         const scaleY = state.targetH / ch;
-        const maxUniform = maxUniformScale(cw, ch);
         document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => {
           let match = false;
           if (c.dataset.scale) {
             const rawS = parseFloat(c.dataset.scale);
-            const s = Math.min(rawS, maxUniform);
-            const expectedW = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(cw * s)));
-            const expectedH = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(ch * s)));
+            const expectedW = Math.max(1, Math.round(cw * rawS));
+            const expectedH = Math.max(1, Math.round(ch * rawS));
             match = (Math.abs(rawS - scaleX) < 0.005 && Math.abs(rawS - scaleY) < 0.005) ||
-              (Math.round(state.targetW) === expectedW && Math.round(state.targetH) === expectedH);
+              (tw === expectedW && th === expectedH);
           } else if (c.dataset.maxw) {
             const mw = parseInt(c.dataset.maxw, 10);
-            const s = Math.min(mw / cw, maxUniform);
-            const expectedW = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(cw * s)));
-            const expectedH = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(ch * s)));
-            match = Math.round(state.targetW) === expectedW && Math.round(state.targetH) === expectedH;
+            const expectedH = Math.max(1, Math.round(ch * (mw / cw)));
+            match = tw === mw && th === expectedH;
           }
           c.classList.toggle("active", match);
         });
