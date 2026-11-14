@@ -5076,7 +5076,11 @@
         window.addEventListener("paste", (e) => {
           const items = e.clipboardData && e.clipboardData.items;
           if (!items) return;
-          const inTextField = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable);
+          const inTextField = e.target && (
+            (e.target.tagName === "INPUT" && !/^(range|checkbox|radio|color|file|button|submit|reset)$/i.test(e.target.type)) ||
+            e.target.tagName === "TEXTAREA" ||
+            e.target.isContentEditable
+          );
           if (inTextField && Array.from(e.clipboardData.types || []).includes("text/plain")) return;
           for (const item of items) {
             if (item.type.startsWith("image/")) {
