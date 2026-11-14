@@ -3967,11 +3967,14 @@
         }
       }
 
-      function syncCropInputs() {
-        els.inpCropX.value = Math.round(state.cropX);
-        els.inpCropY.value = Math.round(state.cropY);
-        els.inpCropW.value = Math.round(state.cropW);
-        els.inpCropH.value = Math.round(state.cropH);
+      let cropInputSnapshot = null;
+
+      function syncCropInputs(skipInput = null) {
+        if (!skipInput) cropInputSnapshot = null;
+        if (skipInput !== els.inpCropX) els.inpCropX.value = Math.round(state.cropX);
+        if (skipInput !== els.inpCropY) els.inpCropY.value = Math.round(state.cropY);
+        if (skipInput !== els.inpCropW) els.inpCropW.value = Math.round(state.cropW);
+        if (skipInput !== els.inpCropH) els.inpCropH.value = Math.round(state.cropH);
         els.cropHudBadge.textContent = `${Math.round(state.cropW)} × ${Math.round(state.cropH)} px`;
         els.resizeSourceInfo.textContent = `当前裁剪区域: ${Math.round(state.cropW)} × ${Math.round(state.cropH)} px`;
       }
@@ -5234,9 +5237,10 @@
           });
         });
 
-        const handleNumericCropChange = (e) => {
+        const applyNumericCropInput = (target, commit) => {
           if (!state.hasImage) return;
-          const target = e && e.target;
+          if (!commit && target && !Number.isFinite(parseNumericInt(target.value))) return;
+          cancelActiveCropDrag(true);
           const minW = 1;
           const minH = 1;
           // A field left empty keeps its current value instead of collapsing the selection to the minimum
@@ -5244,10 +5248,16 @@
             const v = parseNumericInt(inp.value);
             return Number.isFinite(v) ? v : current;
           };
+          const baseW = (target === els.inpCropX && cropInputSnapshot && cropInputSnapshot.inp === els.inpCropX)
+            ? cropInputSnapshot.w
+            : read(els.inpCropW, state.cropW);
+          const baseH = (target === els.inpCropY && cropInputSnapshot && cropInputSnapshot.inp === els.inpCropY)
+            ? cropInputSnapshot.h
+            : read(els.inpCropH, state.cropH);
           let x = Math.min(state.rotW - minW, Math.max(0, read(els.inpCropX, state.cropX)));
           let y = Math.min(state.rotH - minH, Math.max(0, read(els.inpCropY, state.cropY)));
-          let w = Math.min(state.rotW, Math.max(minW, read(els.inpCropW, state.cropW)));
-          let h = Math.min(state.rotH, Math.max(minH, read(els.inpCropH, state.cropH)));
+          let w = Math.min(state.rotW, Math.max(minW, baseW));
+          let h = Math.min(state.rotH, Math.max(minH, baseH));
 
           // When X or Y is edited directly (e.g. from the initial full-frame state), shrink W/H to fit
           // rather than snapping the newly typed X/Y back to 0
@@ -5262,13 +5272,18 @@
           state.cropY = y;
           state.cropW = w;
           state.cropH = h;
-          // A typed size that no longer matches the locked ratio would make the next drag jump
-          const lockedRatio = parseRatioValue(state.cropRatio);
-          if (lockedRatio && Math.abs(w / h - lockedRatio) / lockedRatio > 0.02) {
-            state.cropRatio = "free";
-            setRatioChipActive("free");
+          if (commit) {
+            cropInputSnapshot = null;
+            // A typed size that no longer matches the locked ratio would make the next drag jump
+            const lockedRatio = parseRatioValue(state.cropRatio);
+            if (lockedRatio && Math.abs(w / h - lockedRatio) / lockedRatio > 0.02) {
+              state.cropRatio = "free";
+              setRatioChipActive("free");
+            }
+            syncCropInputs();
+          } else {
+            syncCropInputs(target);
           }
-          syncCropInputs();
           const currentScale = state.resizeScale;
           syncResizeFromCrop(currentScale, true);
           if (state.compareMode) renderCompareView();
@@ -5277,7 +5292,14 @@
         };
 
         [els.inpCropX, els.inpCropY, els.inpCropW, els.inpCropH].forEach((inp) => {
-          inp.addEventListener("change", handleNumericCropChange);
+          inp.addEventListener("focus", () => {
+            if (state.hasImage) cropInputSnapshot = { inp, w: state.cropW, h: state.cropH };
+          });
+          inp.addEventListener("blur", () => {
+            if (cropInputSnapshot && cropInputSnapshot.inp === inp) cropInputSnapshot = null;
+          });
+          inp.addEventListener("input", (e) => applyNumericCropInput(e.target, false));
+          inp.addEventListener("change", (e) => applyNumericCropInput(e.target, true));
         });
 
         $("btnCenterCrop").addEventListener("click", () => {
