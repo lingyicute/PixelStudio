@@ -4330,6 +4330,12 @@
       window.addEventListener("pointerup", endCropDrag);
       window.addEventListener("pointercancel", endCropDrag);
 
+      function cancelActiveCropDrag(willScheduleEncode = true) {
+        if (!cropDragState) return;
+        cropDragState = null;
+        if (!willScheduleEncode) scheduleOutputEncode();
+      }
+
       // These drags are fully handled through pointer events: cancel the touch sequence so the browser
       // derives no gesture from it. Released with speed, Chrome otherwise starts an invisible fling and
       // swallows the next tap (e.g. on a toolbar button) to "stop" it.
@@ -4341,6 +4347,7 @@
       function applyAspectRatioPreset(ratioStr) {
         state.cropRatio = ratioStr;
         const r = parseRatioValue(ratioStr);
+        cancelActiveCropDrag(Boolean(r && state.hasImage));
         if (!r || !state.hasImage) {
           updateCropBoxVisual();
           return;
@@ -5137,12 +5144,14 @@
         // 4. Stage Rotate / Flip / Reset / Compare
         $("btnRotateLeft").addEventListener("click", () => {
           if (!state.hasImage) return;
+          cancelActiveCropDrag(true);
           transformCropForOp("ccw");
           state.rotation = (state.rotation + 270) % 360;
           rebuildTransformedSource(false);
         });
         $("btnRotateRight").addEventListener("click", () => {
           if (!state.hasImage) return;
+          cancelActiveCropDrag(true);
           transformCropForOp("cw");
           state.rotation = (state.rotation + 90) % 360;
           rebuildTransformedSource(false);
@@ -5151,6 +5160,7 @@
         // has to toggle the source-space vertical flip (and vice versa).
         $("btnFlipH").addEventListener("click", () => {
           if (!state.hasImage) return;
+          cancelActiveCropDrag(true);
           transformCropForOp("flipH");
           if (state.rotation % 180 !== 0) state.flipV = !state.flipV;
           else state.flipH = !state.flipH;
@@ -5158,6 +5168,7 @@
         });
         $("btnFlipV").addEventListener("click", () => {
           if (!state.hasImage) return;
+          cancelActiveCropDrag(true);
           transformCropForOp("flipV");
           if (state.rotation % 180 !== 0) state.flipH = !state.flipH;
           else state.flipV = !state.flipV;
@@ -5165,7 +5176,7 @@
         });
         $("btnResetAll").addEventListener("click", () => {
           if (!state.hasImage) return;
-          cropDragState = null;
+          cancelActiveCropDrag(true);
           state.rotation = 0;
           state.flipH = false;
           state.flipV = false;
@@ -5188,11 +5199,8 @@
 
         els.btnToggleCompareTop.addEventListener("click", () => {
           state.compareMode = !state.compareMode;
-          if (cropDragState) {
-            // The pointerup of an interrupted drag is ignored, so the encode it left pending has to start here
-            cropDragState = null;
-            scheduleOutputEncode();
-          }
+          // The pointerup of an interrupted drag is ignored, so the encode it left pending has to start here
+          cancelActiveCropDrag(false);
           compareDragPointer = null;
           els.btnToggleCompareTop.classList.toggle("btn-filled", state.compareMode);
           els.btnToggleCompareTop.classList.toggle("btn-tonal", !state.compareMode);
@@ -5266,6 +5274,7 @@
 
         $("btnCenterCrop").addEventListener("click", () => {
           if (!state.hasImage) return;
+          cancelActiveCropDrag(true);
           state.cropX = Math.round((state.rotW - state.cropW) / 2);
           state.cropY = Math.round((state.rotH - state.cropH) / 2);
           syncCropInputs();
@@ -5276,6 +5285,7 @@
 
         $("btnResetCrop").addEventListener("click", () => {
           if (!state.hasImage) return;
+          cancelActiveCropDrag(true);
           state.cropX = 0;
           state.cropY = 0;
           state.cropW = state.rotW;
