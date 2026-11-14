@@ -3493,6 +3493,14 @@
         return `${d.getFullYear()}:${pad(d.getMonth() + 1)}:${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       }
 
+      // Accept integers, decimals and scientific notation (e.g. "1e3") in <input type="number">
+      function parseNumericInt(raw) {
+        const s = String(raw == null ? "" : raw).trim();
+        if (!s) return NaN;
+        const v = Number(s);
+        return Number.isFinite(v) ? Math.round(v) : NaN;
+      }
+
       function parseRatioValue(ratioStr) {
         if (ratioStr === "free") return null;
         if (ratioStr === "original") return state.rotW / Math.max(1, state.rotH);
@@ -5233,7 +5241,7 @@
           const minH = 1;
           // A field left empty keeps its current value instead of collapsing the selection to the minimum
           const read = (inp, current) => {
-            const v = parseInt(inp.value, 10);
+            const v = parseNumericInt(inp.value);
             return Number.isFinite(v) ? v : current;
           };
           let x = Math.min(state.rotW - minW, Math.max(0, read(els.inpCropX, state.cropX)));
@@ -5350,7 +5358,7 @@
 
         els.inpResizeW.addEventListener("input", () => {
           if (!state.hasImage) return;
-          const raw = parseInt(els.inpResizeW.value, 10);
+          const raw = parseNumericInt(els.inpResizeW.value);
           if (!Number.isFinite(raw)) return; // Field temporarily empty while typing
           let w = Math.max(1, Math.min(MAX_CANVAS_SIDE, raw));
           if (state.lockAspect && state.cropW > 0 && state.cropH > 0) {
@@ -5368,7 +5376,7 @@
 
         els.inpResizeH.addEventListener("input", () => {
           if (!state.hasImage) return;
-          const raw = parseInt(els.inpResizeH.value, 10);
+          const raw = parseNumericInt(els.inpResizeH.value);
           if (!Number.isFinite(raw)) return;
           let h = Math.max(1, Math.min(MAX_CANVAS_SIDE, raw));
           if (state.lockAspect && state.cropH > 0 && state.cropW > 0) {
@@ -5690,12 +5698,12 @@
         });
 
         els.inpCompressionExact.addEventListener("input", () => {
-          const v = parseInt(els.inpCompressionExact.value, 10);
+          const v = parseNumericInt(els.inpCompressionExact.value);
           if (Number.isFinite(v)) updateCompressionRate(v, false);
         });
 
         els.inpCompressionExact.addEventListener("change", () => {
-          const v = parseInt(els.inpCompressionExact.value, 10);
+          const v = parseNumericInt(els.inpCompressionExact.value);
           updateCompressionRate(Number.isFinite(v) ? v : state.compressionRate, true);
         });
 
