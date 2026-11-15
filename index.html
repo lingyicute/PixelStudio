@@ -4353,6 +4353,8 @@
             const bottom = initCropY + initCropH;
 
             if (dir === "n" || dir === "s") nw = nh * lockedRatio;
+            // A corner moves along both axes: follow the one dragged further, otherwise a purely vertical drag is ignored
+            else if (dir.length === 2 && Math.abs(nh / initCropH - 1) > Math.abs(nw / initCropW - 1)) nw = nh * lockedRatio;
             else nh = nw / lockedRatio;
 
             // Available room in each axis (pure N/S or E/W drags can slide the perpendicular axis inside the frame)
