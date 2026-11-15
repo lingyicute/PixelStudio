@@ -2759,6 +2759,11 @@
           return String(Number(seconds.toPrecision(6)));
         },
 
+        canonicalExposure(raw) {
+          const v = this.parseExposure(raw);
+          return v >= 1e-6 && v <= 3600 ? this.formatExposure(v) : "";
+        },
+
         // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants (incl. ISO 8601 with fractional
          // seconds / zone suffix, whose wall-clock part is kept as is), drop anything unparsable
         normalizeDate(raw) {
@@ -2813,8 +2818,8 @@
           const descStr = (meta.description || "").trim();
 
           const fNum = this.parsePositiveFixed(meta.fNumber);
-          const rawExp = this.parseExposure(meta.exposureTime);
-          const expTime = rawExp >= 1e-6 && rawExp <= 3600 ? rawExp : NaN;
+          const canonExp = this.canonicalExposure(meta.exposureTime);
+          const expTime = canonExp ? this.parseExposure(canonExp) : NaN;
           const isoVal = this.parseIso(meta.iso);
           const focalVal = this.parsePositiveFixed(meta.focalLength);
           const latVal = this.parseGpsCoord(meta.gpsLat, 90);
@@ -4605,7 +4610,7 @@
         if (state.stripExif) return `${pixelKey}|strip`;
         const m = state.exif;
         const fNum = ExifEngine.parsePositiveFixed(m.fNumber);
-        const exp = ExifEngine.parseExposure(m.exposureTime);
+        const exp = ExifEngine.canonicalExposure(m.exposureTime);
         const iso = ExifEngine.parseIso(m.iso);
         const focal = ExifEngine.parsePositiveFixed(m.focalLength);
         const lat = ExifEngine.parseGpsCoord(m.gpsLat, 90);
@@ -4619,7 +4624,7 @@
           (m.copyright || "").trim(),
           (m.description || "").trim(),
           fNum,
-          exp >= 1e-6 && exp <= 3600 ? exp : 0,
+          exp,
           iso,
           focal,
           Number.isFinite(lat) ? lat : "",
@@ -5636,11 +5641,13 @@
         els.exifExposure.addEventListener("change", () => {
           const raw = els.exifExposure.value.trim();
           if (!raw) return;
-          const v = ExifEngine.parseExposure(raw);
-          if (v >= 1e-6 && v <= 3600) {
-            els.exifExposure.value = ExifEngine.formatExposure(v);
-            readExifFromInputs();
-            scheduleOutputEncode();
+          const canon = ExifEngine.canonicalExposure(raw);
+          if (canon) {
+            if (els.exifExposure.value !== canon) {
+              els.exifExposure.value = canon;
+              readExifFromInputs();
+              scheduleOutputEncode();
+            }
           } else {
             showToast("快门速度格式无效（如 1/125 或 0.008），导出时将忽略该字段");
           }
