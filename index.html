@@ -4233,9 +4233,17 @@
         h = Math.max(1, Math.min(state.rotH, Math.round(h)));
         x = Math.max(0, Math.min(state.rotW - w, Math.round(x)));
         y = Math.max(0, Math.min(state.rotH - h, Math.round(y)));
+        if (x === state.cropX && y === state.cropY && w === state.cropW && h === state.cropH) return;
+        cancelActiveCropDrag(true);
+        const sizeChanged = w !== state.cropW || h !== state.cropH;
         state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
-        syncCropInputs();
-        syncResizeFromCrop(state.resizeScale, true);
+        if (sizeChanged) {
+          syncCropInputs();
+          syncResizeFromCrop(state.resizeScale, true);
+        } else {
+          els.inpCropX.value = x;
+          els.inpCropY.value = y;
+        }
         if (state.compareMode) renderCompareView();
         else updateCropBoxVisual();
         scheduleOutputEncode();
