@@ -4215,20 +4215,18 @@
         }
         if (!handled) return;
         e.preventDefault();
-        const minW = Math.min(16, state.rotW);
-        const minH = Math.min(16, state.rotH);
         if (e.shiftKey) {
           // Resizing keeps the top-left corner fixed, so only the room right/below limits growth
           const roomW = state.rotW - x;
           const roomH = state.rotH - y;
           if (lockedRatio) {
             // Clamping each axis separately would break the ratio: clamp within the largest & smallest valid box
-            const minBoxW = Math.min(roomW, roomH * lockedRatio, Math.max(minW, minH * lockedRatio));
+            const minBoxW = Math.min(roomW, roomH * lockedRatio, Math.max(1, lockedRatio));
             w = Math.max(minBoxW, Math.min(w, roomW, roomH * lockedRatio));
             h = w / lockedRatio;
           } else {
-            w = Math.max(minW, Math.min(roomW, w));
-            h = Math.max(minH, Math.min(roomH, h));
+            w = Math.max(1, Math.min(roomW, w));
+            h = Math.max(1, Math.min(roomH, h));
           }
         }
         w = Math.max(1, Math.min(state.rotW, Math.round(w)));
