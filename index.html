@@ -4546,40 +4546,48 @@
       function drawResampled(ctx, src, sx, sy, sw, sh, dw, dh, quality) {
         let cur = src;
         let cx = sx, cy = sy, cw = sw, ch = sh;
-        if (quality === "high") {
-          while (cw >= dw * 2 || ch >= dh * 2) {
-            let nw = cw >= dw * 2 ? Math.max(dw, Math.ceil(cw / 2)) : cw;
-            let nh = ch >= dh * 2 ? Math.max(dh, Math.ceil(ch / 2)) : ch;
-            // ensureSafeSource feeds an <img> that is over the canvas budget on purpose: a half-size
-            // intermediate can still exceed it and would silently come out blank, so cap it as well
-            if (nw * nh > MAX_CANVAS_PIXELS || nw > MAX_CANVAS_SIDE || nh > MAX_CANVAS_SIDE) {
-              const k = Math.min(Math.sqrt(MAX_CANVAS_PIXELS / (nw * nh)), MAX_CANVAS_SIDE / Math.max(nw, nh));
-              nw = Math.max(dw, Math.floor(nw * k));
-              nh = Math.max(dh, Math.floor(nh * k));
-              if (nw * nh > MAX_CANVAS_PIXELS) {
-                if (nh === dh) nw = Math.max(dw, Math.floor(MAX_CANVAS_PIXELS / nh));
-                if (nw * nh > MAX_CANVAS_PIXELS) nh = Math.max(dh, Math.floor(MAX_CANVAS_PIXELS / nw));
+        try {
+          if (quality === "high") {
+            while (cw >= dw * 2 || ch >= dh * 2) {
+              let nw = cw >= dw * 2 ? Math.max(dw, Math.ceil(cw / 2)) : cw;
+              let nh = ch >= dh * 2 ? Math.max(dh, Math.ceil(ch / 2)) : ch;
+              // ensureSafeSource feeds an <img> that is over the canvas budget on purpose: a half-size
+              // intermediate can still exceed it and would silently come out blank, so cap it as well
+              if (nw * nh > MAX_CANVAS_PIXELS || nw > MAX_CANVAS_SIDE || nh > MAX_CANVAS_SIDE) {
+                const k = Math.min(Math.sqrt(MAX_CANVAS_PIXELS / (nw * nh)), MAX_CANVAS_SIDE / Math.max(nw, nh));
+                nw = Math.max(dw, Math.floor(nw * k));
+                nh = Math.max(dh, Math.floor(nh * k));
+                if (nw * nh > MAX_CANVAS_PIXELS) {
+                  if (nh === dh) nw = Math.max(dw, Math.floor(MAX_CANVAS_PIXELS / nh));
+                  if (nw * nh > MAX_CANVAS_PIXELS) nh = Math.max(dh, Math.floor(MAX_CANVAS_PIXELS / nw));
+                }
               }
+              if ((nw === dw && nh === dh) || (nw === cw && nh === ch)) break;
+              const tmp = document.createElement("canvas");
+              tmp.width = nw;
+              tmp.height = nh;
+              const tctx = tmp.getContext("2d");
+              if (!tctx) {
+                releaseCanvas(tmp);
+                break;
+              }
+              try {
+                tctx.imageSmoothingEnabled = true;
+                tctx.imageSmoothingQuality = "high";
+                tctx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
+              } catch (err) {
+                releaseCanvas(tmp);
+                throw err;
+              }
+              if (cur !== src) releaseCanvas(cur);
+              cur = tmp;
+              cx = 0; cy = 0; cw = nw; ch = nh;
             }
-            if ((nw === dw && nh === dh) || (nw === cw && nh === ch)) break;
-            const tmp = document.createElement("canvas");
-            tmp.width = nw;
-            tmp.height = nh;
-            const tctx = tmp.getContext("2d");
-            if (!tctx) {
-              releaseCanvas(tmp);
-              break;
-            }
-            tctx.imageSmoothingEnabled = true;
-            tctx.imageSmoothingQuality = "high";
-            tctx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
-            if (cur !== src) releaseCanvas(cur);
-            cur = tmp;
-            cx = 0; cy = 0; cw = nw; ch = nh;
           }
+          ctx.drawImage(cur, cx, cy, cw, ch, 0, 0, dw, dh);
+        } finally {
+          if (cur !== src) releaseCanvas(cur);
         }
-        ctx.drawImage(cur, cx, cy, cw, ch, 0, 0, dw, dh);
-        if (cur !== src) releaseCanvas(cur);
       }
 
       // The compressed pixels of the last successful encode, keyed by every setting that affects them.
