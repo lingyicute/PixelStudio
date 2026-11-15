@@ -2770,8 +2770,12 @@
         // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants (incl. ISO 8601 with fractional
          // seconds / zone suffix, whose wall-clock part is kept as is), drop anything unparsable
         normalizeDate(raw) {
-          const s = (raw || "").trim();
+          let s = (raw || "").trim();
           if (!s) return "";
+          // RFC 1123 ("Tue, 02 Jan 2024 15:04:05 +0000"): the form the PNG spec recommends for the "Creation Time" text chunk
+          const rfc = s.match(/^(?:[a-z]{3,9},?\s+)?(\d{1,2})\s+([a-z]{3})[a-z]*\.?,?\s+(\d{4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?\s*(?:Z|UTC?|GMT|[+-]\d{2}:?\d{2})?$/i);
+          const monthNo = rfc ? "jan feb mar apr may jun jul aug sep oct nov dec".split(" ").indexOf(rfc[2].toLowerCase()) + 1 : 0;
+          if (monthNo) s = `${rfc[3]}-${monthNo}-${rfc[1]}${rfc[4] ? " " + rfc[4] : ""}`;
           const m = s.match(/^(\d{4})[-:/.](\d{1,2})[-:/.](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:[.,]\d+)?)?\s*(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/i);
           if (!m) return "";
           const p = (v) => String(v || "0").padStart(2, "0");
