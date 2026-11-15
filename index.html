@@ -5309,14 +5309,20 @@
             const v = parseNumericInt(inp.value);
             return Number.isFinite(v) ? v : current;
           };
+          const baseX = (target === els.inpCropW && cropInputSnapshot && cropInputSnapshot.inp === els.inpCropW)
+            ? cropInputSnapshot.x
+            : read(els.inpCropX, state.cropX);
+          const baseY = (target === els.inpCropH && cropInputSnapshot && cropInputSnapshot.inp === els.inpCropH)
+            ? cropInputSnapshot.y
+            : read(els.inpCropY, state.cropY);
           const baseW = (target === els.inpCropX && cropInputSnapshot && cropInputSnapshot.inp === els.inpCropX)
             ? cropInputSnapshot.w
             : read(els.inpCropW, state.cropW);
           const baseH = (target === els.inpCropY && cropInputSnapshot && cropInputSnapshot.inp === els.inpCropY)
             ? cropInputSnapshot.h
             : read(els.inpCropH, state.cropH);
-          let x = Math.min(state.rotW - minW, Math.max(0, read(els.inpCropX, state.cropX)));
-          let y = Math.min(state.rotH - minH, Math.max(0, read(els.inpCropY, state.cropY)));
+          let x = Math.min(state.rotW - minW, Math.max(0, baseX));
+          let y = Math.min(state.rotH - minH, Math.max(0, baseY));
           let w = Math.min(state.rotW, Math.max(minW, baseW));
           let h = Math.min(state.rotH, Math.max(minH, baseH));
 
@@ -5354,7 +5360,7 @@
 
         [els.inpCropX, els.inpCropY, els.inpCropW, els.inpCropH].forEach((inp) => {
           inp.addEventListener("focus", () => {
-            if (state.hasImage) cropInputSnapshot = { inp, w: state.cropW, h: state.cropH };
+            if (state.hasImage) cropInputSnapshot = { inp, x: state.cropX, y: state.cropY, w: state.cropW, h: state.cropH };
           });
           inp.addEventListener("blur", () => {
             if (cropInputSnapshot && cropInputSnapshot.inp === inp) cropInputSnapshot = null;
