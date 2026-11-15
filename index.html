@@ -5598,7 +5598,7 @@
             const raw = inp.value.trim();
             if (!raw) return;
             const v = Number(raw);
-            if (Number.isNaN(v)) {
+            if (!Number.isFinite(v)) {
               inp.value = "";
               readExifFromInputs();
               scheduleOutputEncode();
