@@ -4380,6 +4380,7 @@
       };
       window.addEventListener("pointerup", endCropDrag);
       window.addEventListener("pointercancel", endCropDrag);
+      els.cropBox.addEventListener("lostpointercapture", endCropDrag);
 
       function cancelActiveCropDrag(willScheduleEncode = true) {
         if (!cropDragState) return;
@@ -4949,6 +4950,7 @@
       };
       window.addEventListener("pointerup", endCompareDrag);
       window.addEventListener("pointercancel", endCompareDrag);
+      els.compareOverlay.addEventListener("lostpointercapture", endCompareDrag);
       els.compareOverlay.addEventListener("touchstart", cancelTouchGesture, { passive: false });
 
       /* ======================================================================
