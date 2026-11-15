@@ -5840,12 +5840,12 @@
           const ext = extMap[state.outputBlob.type] || extMap[state.outputFormat] || "jpg";
           const cleanName = (els.inpOutputFilename.value || "")
             // Only strip characters that are illegal in file names; keep dots, spaces and non-Latin scripts
-            .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
-            .replace(/\.(jpe?g|png|webp|bmp|avif)$/i, "")
+            .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_")
+            .replace(/\.(jpe?g|png|webp|bmp|avif)[\s.]*$/i, "")
             .replace(/^[\s.]+|[\s.]+$/g, "") || "pixelstudio_output";
           // Keep names within common file-system limits (by code point) and avoid Windows device names
           let safeName = Array.from(cleanName).slice(0, 120).join("").replace(/[\s.]+$/, "") || "pixelstudio_output";
-          if (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(safeName)) safeName = `_${safeName}`;
+          if (/^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(safeName)) safeName = `_${safeName}`;
           const fullFilename = `${safeName}.${ext}`;
 
           const link = document.createElement("a");
