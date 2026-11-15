@@ -4173,6 +4173,7 @@
         const scaleY = innerH / state.rotH;
         const topPx = state.cropY * scaleY;
         // Measured before the box is restyled, so that no extra layout pass is forced
+        const roomTop = els.canvasStageInner.offsetTop + topPx;
         const roomRight = els.canvasViewport.clientWidth - els.canvasStageInner.offsetLeft - state.cropX * scaleX;
         const hudRight = roomRight < els.cropHudBadge.offsetWidth + 8;
 
@@ -4180,8 +4181,8 @@
         els.cropBox.style.top = `${topPx}px`;
         els.cropBox.style.width = `${state.cropW * scaleX}px`;
         els.cropBox.style.height = `${state.cropH * scaleY}px`;
-        // Keep the size badge readable when the box touches the top edge
-        els.cropBox.classList.toggle("hud-inside", topPx < 30);
+        // Keep the size badge readable when it would clip against the top of the stage viewport
+        els.cropBox.classList.toggle("hud-inside", roomTop < 32);
         // ...and when the box starts too close to the right edge for the badge to fit next to it
         els.cropBox.classList.toggle("hud-right", hudRight);
       }
