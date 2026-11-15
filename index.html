@@ -3781,7 +3781,9 @@
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
         outputGeometryKey = null;
+        outputCompareLabel = "";
         encodeInFlight = false;
+        isEncodePending = false;
         state.hasImage = true;
         state.sourceImg = safe.source;
         state.sourceW = safe.w;
@@ -4429,7 +4431,9 @@
       let lastScheduledEncodeKey = null;
       let lastCompletedEncodeKey = null;
       let outputGeometryKey = null;
+      let outputCompareLabel = "";
       let encodeInFlight = false;
+      let isEncodePending = false;
 
       // The result on screen no longer matches the settings (e.g. mid crop drag): block export of the
       // stale file now, but leave the actual encode to whoever finishes the gesture
@@ -4492,7 +4496,9 @@
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
         outputGeometryKey = null;
+        outputCompareLabel = "";
         encodeInFlight = false;
+        isEncodePending = false;
         compareAfterCache = null;
         els.estimatedSizeLabel.textContent = "-- KB";
         els.sizeDeltaPill.textContent = "编码失败";
@@ -4502,11 +4508,15 @@
       }
 
       function setEncodePending(pending) {
+        isEncodePending = pending;
         els.estimatedSizeLabel.classList.toggle("pending", pending);
         els.btnDownloadExport.disabled = pending || !state.hasImage || !state.outputBlob;
         // Crop drags call this on every pointer move: only write the label when it really changes
         const label = pending ? "编码中…" : "导出保存图片";
         if (els.btnDownloadText.textContent !== label) els.btnDownloadText.textContent = label;
+        if (pending && state.compareMode && els.compareRightLabel.textContent !== "编码中…") {
+          els.compareRightLabel.textContent = "编码中…";
+        }
       }
 
       // Single-pass drawImage aliases badly on big reductions in engines that ignore
@@ -4784,6 +4794,8 @@
         state.outputUrl = URL.createObjectURL(blob);
         lastCompletedEncodeKey = lastScheduledEncodeKey;
         outputGeometryKey = buildGeometryKey(outW, outH);
+        const compareModeStr = state.compressionMode === "lossless" ? "无损输出" : `压缩率 ${state.compressionRate}%`;
+        outputCompareLabel = `${compareModeStr} (${formatBytes(blob.size)})`;
         compareAfterCache = null; // Stale decoded copy of the previous output
         setEncodePending(false);
 
@@ -4852,7 +4864,7 @@
           // No (valid) encoded result yet, geometry changed, or the encode failed: never leave a stale "after" image behind
           const aCanvas = els.compareAfterCanvas;
           aCanvas.getContext("2d").clearRect(0, 0, aCanvas.width, aCanvas.height);
-          els.compareRightLabel.textContent = (encodeTimer !== null || encodeInFlight) ? "编码中…" : "输出预览";
+          els.compareRightLabel.textContent = isEncodePending ? "编码中…" : "输出预览";
           return;
         }
 
@@ -4869,15 +4881,18 @@
             if (compareAfterCache === entry && url === state.outputUrl && state.compareMode) paintCompareAfter(img);
           };
           img.onerror = () => {
-            if (compareAfterCache === entry) compareAfterCache = null;
+            if (compareAfterCache === entry) {
+              compareAfterCache = null;
+              const aCanvas = els.compareAfterCanvas;
+              aCanvas.getContext("2d").clearRect(0, 0, aCanvas.width, aCanvas.height);
+            }
           };
           img.src = url;
         } else if (entry.ready) {
           paintCompareAfter(entry.img);
         }
 
-        const modeStr = state.compressionMode === "lossless" ? "无损输出" : `压缩率 ${state.compressionRate}%`;
-        els.compareRightLabel.textContent = `${modeStr} (${formatBytes(state.outputBlob.size)})`;
+        els.compareRightLabel.textContent = isEncodePending ? "编码中…" : (outputCompareLabel || "输出预览");
       }
 
       function updateCompareClip() {
