@@ -2473,6 +2473,7 @@
           // Check PNG Signature: 89 50 4E 47 0D 0A 1A 0A
           else if (view.getUint32(0, false) === 0x89504e47 && view.getUint32(4, false) === 0x0d0a1a0a) {
             let offset = 8;
+            const textMeta = [];
             while (offset + 12 <= view.byteLength) {
               const length = view.getUint32(offset, false);
               const type = view.getUint32(offset + 4, false);
@@ -2487,7 +2488,7 @@
                 if (nullIdx > 0) {
                   const key = this._decodeText(chunkBytes.subarray(0, nullIdx));
                   const val = this._decodeText(chunkBytes.subarray(nullIdx + 1)).trim();
-                  this._applyTextMeta(key, val, result);
+                  textMeta.push([key, val]);
                 }
               } else if (type === 0x69545874) { // 'iTXt' (uncompressed UTF-8 text)
                 const chunkBytes = new Uint8Array(arrayBuffer, offset + 8, length);
@@ -2498,7 +2499,7 @@
                   if (transEnd >= 0) {
                     const key = this._decodeText(chunkBytes.subarray(0, nullIdx));
                     const val = this._decodeText(chunkBytes.subarray(transEnd + 1)).trim();
-                    this._applyTextMeta(key, val, result);
+                    textMeta.push([key, val]);
                   }
                 }
               } else if (type === 0x49454e44) { // 'IEND'
@@ -2506,6 +2507,8 @@
               }
               offset += 12 + length;
             }
+            // Apply text chunks after eXIf so structured EXIF always wins regardless of chunk order
+            for (const [key, val] of textMeta) this._applyTextMeta(key, val, result);
           }
           // Check WebP: RIFF....WEBP, EXIF chunk
           else if (view.byteLength >= 20 && view.getUint32(0, false) === 0x52494646 && view.getUint32(8, false) === 0x57454250) {
