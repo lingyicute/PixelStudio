@@ -3199,7 +3199,8 @@
             if (vp8x && vp8x.payload.length >= 10) {
               const p = new Uint8Array(vp8x.payload);
               p[0] &= ~(0x08 | 0x04); // Clear EXIF & XMP flags
-              ordered = [{ fourcc: "VP8X", payload: p }, ...body];
+              const isSimple = p[0] === 0 && body.length === 1 && (body[0].fourcc === "VP8 " || body[0].fourcc === "VP8L");
+              ordered = isSimple ? body : [{ fourcc: "VP8X", payload: p }, ...body];
             } else {
               ordered = body;
             }
@@ -3226,7 +3227,11 @@
               vp8x = { fourcc: "VP8X", payload: p };
             }
             const exifChunk = { fourcc: "EXIF", payload: this.buildTiffBuffer(meta, { w: canvasW, h: canvasH }) };
-            ordered = [vp8x, ...body, exifChunk];
+            // RFC 9649 requires the EXIF chunk to precede any XMP chunk
+            const xmpIdx = body.findIndex((c) => c.fourcc === "XMP ");
+            ordered = xmpIdx >= 0
+              ? [vp8x, ...body.slice(0, xmpIdx), exifChunk, ...body.slice(xmpIdx)]
+              : [vp8x, ...body, exifChunk];
           }
 
           let total = 12;
