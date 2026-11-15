@@ -4034,7 +4034,7 @@
 
       // keepStretch: the crop changed but the user's scale did not, so an unlocked (non-uniform)
       // width/height ratio must survive instead of snapping back to the crop's own aspect.
-      function syncResizeFromCrop(scaleFactor = null, keepStretch = false) {
+      function syncResizeFromCrop(scaleFactor = null, keepStretch = false, preserveSlider = false) {
         const cw = Math.max(1, Math.round(state.cropW));
         const ch = Math.max(1, Math.round(state.cropH));
         if (scaleFactor !== null) {
@@ -4067,16 +4067,16 @@
           }
           state.targetH = h;
         }
-        syncResizeInputs();
+        syncResizeInputs(preserveSlider);
       }
 
-      function syncResizeInputs() {
+      function syncResizeInputs(preserveSlider = false) {
         els.inpResizeW.value = Math.round(state.targetW);
         els.inpResizeH.value = Math.round(state.targetH);
         const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
-        // While the thumb is being dragged the slider is the source of truth: rewriting it from the
-        // rounded pixel size makes it jitter between steps on small crops
-        if (document.activeElement !== els.sliderScalePercent) {
+        // Only skip rewriting the slider while the slider itself is driving the resize (avoiding jitter
+        // on small crops); checking activeElement fails on Safari where button clicks do not move focus
+        if (!preserveSlider) {
           els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
         }
         els.scalePercentBadge.textContent = `${pct}%`;
@@ -5479,7 +5479,7 @@
         els.sliderScalePercent.addEventListener("input", () => {
           if (!state.hasImage) return;
           const pct = parseInt(els.sliderScalePercent.value, 10) || 100;
-          syncResizeFromCrop(pct / 100); // also refreshes the badge with the scale that was really applied
+          syncResizeFromCrop(pct / 100, false, true); // also refreshes the badge with the scale that was really applied
           // A size limit can cap the scale below the thumb: move the thumb back to the applied value
           const applied = Math.round(state.resizeScale * 100);
           if (applied < pct) els.sliderScalePercent.value = applied;
