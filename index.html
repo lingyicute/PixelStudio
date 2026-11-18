@@ -3732,7 +3732,24 @@
 
       let loadToken = 0; // Only the most recently requested image may initialise the workspace
 
+      async function decodeLocalImage(blob) {
+        const url = URL.createObjectURL(blob);
+        try {
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error("图片解码失败，请尝试其他图片格式"));
+            img.src = url;
+          });
+          if (!img.naturalWidth || !img.naturalHeight) throw new Error("无法获取图片尺寸，请换一张图片");
+          return img;
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+
       async function loadImageFromFile(file, onLoaded) {
+        const token = ++loadToken; // An invalid selection also supersedes a previous in-flight load.
         const looksLikeImage = file && (
           (file.type && file.type.startsWith("image/")) ||
           /\.(jpe?g|a?png|webp|gif|bmp|avif|svg|ico|cur|heic|heif|tiff?)$/i.test(file.name || "")
@@ -3741,7 +3758,6 @@
           showToast("请选择有效的图片文件 (JPEG / PNG / WebP / BMP / GIF)");
           return;
         }
-        const token = ++loadToken;
         try {
           const arrayBuffer = await file.arrayBuffer();
           if (token !== loadToken) return;
@@ -3749,55 +3765,27 @@
           try {
             parsedExif = await ExifEngine.parse(arrayBuffer);
           } catch (parseErr) {
-            // A malformed EXIF block must never prevent the image itself from loading
             console.warn("EXIF 解析失败，已忽略", parseErr);
             parsedExif = await ExifEngine.parse(new ArrayBuffer(0));
           }
           if (token !== loadToken) return; // Reading compressed text may yield to a newer selection.
-          const blobUrl = URL.createObjectURL(file);
-
-          const img = new Image();
-          img.onload = () => {
-            URL.revokeObjectURL(blobUrl);
-            if (token !== loadToken) return;
-            if (!img.naturalWidth || !img.naturalHeight) {
-              showToast("无法获取图片尺寸（可能是无固有尺寸的 SVG），请换一张图片");
-              return;
-            }
-            // Runs before init so that a downscale warning raised by init is not overwritten
-            if (typeof onLoaded === "function") onLoaded();
-            try {
-              const fallbackExt = ((file.type || "").split("/")[1] || "png").replace("jpeg", "jpg").replace("+xml", "");
-              initWorkspaceWithImage(img, {
-                fileName: (file.name || "").trim() || `clipboard.${fallbackExt}`,
-                fileSize: file.size,
-                mimeType: file.type,
-                exif: parsedExif
-              });
-            } catch (initErr) {
-              console.error(initErr);
-              showToast("图片载入失败：" + ((initErr && initErr.message) || "内存不足，请换一张较小的图片"));
-            }
-          };
-          img.onerror = () => {
-            URL.revokeObjectURL(blobUrl);
-            if (token !== loadToken) return;
-            showToast("图片解码失败，请尝试其他图片格式");
-          };
-          img.src = blobUrl;
+          const img = await decodeLocalImage(file);
+          if (token !== loadToken) return;
+          const fallbackExt = ((file.type || "").split("/")[1] || "png").replace("jpeg", "jpg").replace("+xml", "");
+          const downscaled = initWorkspaceWithImage(img, {
+            fileName: (file.name || "").trim() || `clipboard.${fallbackExt}`,
+            fileSize: file.size,
+            mimeType: file.type,
+            exif: parsedExif
+          });
+          if (!downscaled) onLoaded?.();
         } catch (err) {
-          showToast("读取图片出错：" + err.message);
+          if (token === loadToken) showToast("图片载入失败：" + (err?.message || "请换一张较小的图片"));
         }
       }
 
-      // Generate a rich, photographic 1600x1066 sample image with realistic EXIF
-      function loadDemoImage() {
-        const w = 1600, h = 1066;
-        const c = document.createElement("canvas");
-        c.width = w;
-        c.height = h;
-        const ctx = c.getContext("2d");
-
+      // Draw a photographic 1600×1066 fixture without downloading an external asset.
+      function drawDemoImage(ctx, w, h) {
         // Vibrant sunset / alpine studio backdrop
         const sky = ctx.createLinearGradient(0, 0, w, h);
         sky.addColorStop(0, "#0f2942");
@@ -3853,47 +3841,52 @@
         ctx.fillStyle = "#9cf1ed";
         ctx.fillText("f/1.8  ·  1/250s  ·  ISO 100  ·  24mm", 116, 238);
 
+      }
+
+      async function loadDemoImage() {
         const token = ++loadToken;
-        c.toBlob((blob) => {
-          releaseCanvas(c); // The encoded bytes are all that is needed from the demo canvas
-          if (!blob) {
-            showToast("无法生成示例图片，请改为选择本地图片");
-            return;
+        const w = 1600, h = 1066;
+        const canvas = document.createElement("canvas");
+        try {
+          let blob;
+          try {
+            sizeCanvas(canvas, w, h);
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("无法分配示例画布");
+            drawDemoImage(ctx, w, h);
+            blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.95));
+          } finally {
+            releaseCanvas(canvas);
           }
-          const url = URL.createObjectURL(blob);
-          const img = new Image();
-          img.onerror = () => {
-            URL.revokeObjectURL(url);
-            if (token === loadToken) showToast("示例图片解码失败");
-          };
-          img.onload = () => {
-            URL.revokeObjectURL(url);
-            if (token !== loadToken) return;
-            initWorkspaceWithImage(img, {
-              fileName: "alpine_sunset_demo.jpg",
-              fileSize: blob.size,
-              mimeType: "image/jpeg",
-              exif: {
-                hasExif: true,
-                make: "SONY",
-                model: "ILCE-7M4",
-                artist: "PixelStudio Photographer",
-                software: "PixelStudio H5 Engine",
-                dateTime: getNowExifDate(),
-                copyright: `© ${new Date().getFullYear()} PixelStudio`,
-                description: "Alpine Sunset Sample Photo",
-                fNumber: "1.8",
-                exposureTime: "1/250",
-                iso: "100",
-                focalLength: "24",
-                gpsLat: "31.230416",
-                gpsLng: "121.473701"
-              }
-            });
-            showToast("已加载内置高分辨率示例图与 EXIF 参数");
-          };
-          img.src = url;
-        }, "image/jpeg", 0.95);
+          if (token !== loadToken) return;
+          if (!blob) throw new Error("无法生成示例图片");
+          const img = await decodeLocalImage(blob);
+          if (token !== loadToken) return;
+          initWorkspaceWithImage(img, {
+            fileName: "alpine_sunset_demo.jpg",
+            fileSize: blob.size,
+            mimeType: "image/jpeg",
+            exif: {
+              hasExif: true,
+              make: "SONY",
+              model: "ILCE-7M4",
+              artist: "PixelStudio Photographer",
+              software: "PixelStudio H5 Engine",
+              dateTime: getNowExifDate(),
+              copyright: `© ${new Date().getFullYear()} PixelStudio`,
+              description: "Alpine Sunset Sample Photo",
+              fNumber: "1.8",
+              exposureTime: "1/250",
+              iso: "100",
+              focalLength: "24",
+              gpsLat: "31.230416",
+              gpsLng: "121.473701"
+            }
+          });
+          showToast("已加载内置高分辨率示例图与 EXIF 参数");
+        } catch (err) {
+          if (token === loadToken) showToast("示例图片载入失败：" + (err?.message || "请改为选择本地图片"));
+        }
       }
 
       function initWorkspaceWithImage(img, meta) {
@@ -4008,6 +4001,7 @@
         applyDefaultOutputFormat(meta);
         state.hasImage = true;
         rebuildTransformedSource(true);
+        return safe.downscaled;
       }
 
       // Export in the format the picture came in (unless the user already chose one manually):
