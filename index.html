@@ -1060,8 +1060,12 @@
       cursor: pointer;
       transition: all 0.16s var(--motion-spring);
     }
-    .m3-chip:hover {
+    .m3-chip:hover:not(:disabled) {
       background: var(--md-sys-color-surface-container-high);
+    }
+    .m3-chip:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
     .m3-chip.active {
       background: var(--md-sys-color-secondary-container);
@@ -2161,19 +2165,19 @@
               <div class="field-grid-2">
                 <div class="m3-field">
                   <label for="inpCropX">起点 X (px)</label>
-                  <input type="number" id="inpCropX" min="0" step="1" value="0" />
+                  <input type="number" id="inpCropX" min="0" step="1" placeholder="—" />
                 </div>
                 <div class="m3-field">
                   <label for="inpCropY">起点 Y (px)</label>
-                  <input type="number" id="inpCropY" min="0" step="1" value="0" />
+                  <input type="number" id="inpCropY" min="0" step="1" placeholder="—" />
                 </div>
                 <div class="m3-field">
                   <label for="inpCropW">裁剪宽度 (px)</label>
-                  <input type="number" id="inpCropW" min="1" step="1" value="1600" />
+                  <input type="number" id="inpCropW" min="1" step="1" placeholder="—" />
                 </div>
                 <div class="m3-field">
                   <label for="inpCropH">裁剪高度 (px)</label>
-                  <input type="number" id="inpCropH" min="1" step="1" value="1066" />
+                  <input type="number" id="inpCropH" min="1" step="1" placeholder="—" />
                 </div>
               </div>
 
@@ -2196,7 +2200,7 @@
                   </div>
                   <div>
                     <h2 class="card-title">修改输出尺寸</h2>
-                    <p class="card-subtitle" id="resizeSourceInfo">当前裁剪区域: 1600 × 1066 px</p>
+                    <p class="card-subtitle" id="resizeSourceInfo">载入图片后可调整输出尺寸</p>
                   </div>
                 </div>
                 <button class="btn btn-text btn-sm" id="btnResetResize">1:1 原尺寸</button>
@@ -2206,7 +2210,7 @@
               <div class="resize-lock-row">
                 <div class="m3-field">
                   <label for="inpResizeW">目标宽度 (px)</label>
-                  <input type="number" id="inpResizeW" min="1" max="16383" step="1" value="1600" />
+                  <input type="number" id="inpResizeW" min="1" max="16383" step="1" placeholder="—" />
                 </div>
 
                 <button class="icon-btn active" id="btnLockAspect" aria-pressed="true" title="锁定/解锁宽高比" aria-label="锁定宽高比">
@@ -2220,7 +2224,7 @@
 
                 <div class="m3-field">
                   <label for="inpResizeH">目标高度 (px)</label>
-                  <input type="number" id="inpResizeH" min="1" max="16383" step="1" value="1066" />
+                  <input type="number" id="inpResizeH" min="1" max="16383" step="1" placeholder="—" />
                 </div>
               </div>
 
@@ -2274,7 +2278,7 @@
                   </div>
                   <div>
                     <h2 class="card-title">修改 EXIF 元数据</h2>
-                    <p class="card-subtitle" id="exifStatusSubtitle">支持读写 JPEG / PNG / WebP 的 EXIF 标签</p>
+                    <p class="card-subtitle" id="exifStatusSubtitle">载入后可读取 JPEG / PNG / WebP 的元数据</p>
                   </div>
                 </div>
               </div>
@@ -4051,7 +4055,7 @@
         els.fileNameLabel.textContent = meta.fileName;
         els.fileMetaLabel.textContent = `${img.naturalWidth}×${img.naturalHeight} · ${formatBytes(meta.fileSize)}`;
         els.btnToggleCompareTop.disabled = false;
-        els.btnDownloadExport.disabled = false;
+        setGeometryToolsAvailable(true);
 
         // Reset active ratio chip
         document.querySelectorAll("#cropRatioChips .m3-chip").forEach((ch) => {
@@ -5139,13 +5143,17 @@
       /* ======================================================================
          MODULE 10: EXIF FORM SYNC HELPERS
          ====================================================================== */
-      // pointer-events alone still lets keyboard users tab into (and edit) fields that are being
-      // ignored, so also make the whole block inert while "clear all EXIF" is on
+      function setGeometryToolsAvailable(available) {
+        for (const id of ["panel-crop", "panel-resize"]) {
+          $(id).querySelectorAll("button, input, select").forEach((control) => { control.disabled = !available; });
+        }
+      }
+
       function applyStripExifUi() {
-        els.exifFormFields.style.opacity = state.stripExif ? "0.45" : "1";
-        els.exifFormFields.style.pointerEvents = state.stripExif ? "none" : "auto";
-        els.exifFormFields.inert = state.stripExif;
-        els.exifFormFields.setAttribute("aria-disabled", String(state.stripExif));
+        const unavailable = state.stripExif || !state.hasImage;
+        els.exifFormFields.style.opacity = unavailable ? "0.45" : "1";
+        els.exifFormFields.inert = unavailable;
+        els.exifFormFields.querySelectorAll("button, input, textarea").forEach((control) => { control.disabled = unavailable; });
       }
 
       function syncExifToInputs() {
@@ -5231,6 +5239,8 @@
          MODULE 11: UI EVENT LISTENERS & NAVIGATION BINDING
          ====================================================================== */
       function bindEvents() {
+        setGeometryToolsAvailable(false);
+        applyStripExifUi();
         // 1. Theme & Material You Seed Switcher (persisted; follows system until the user overrides)
         const { values: prefs, save: writePrefs } = pixelStudioPrefs;
         const darkMql = window.matchMedia?.("(prefers-color-scheme: dark)");

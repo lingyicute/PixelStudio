@@ -166,6 +166,21 @@ for (const engine of engines) {
 }
 
 if (engines.includes('chromium')) {
+  test('chromium: geometry and metadata editing are enabled only once an image is loaded', { timeout: 30000 }, () => open('chromium', async (page) => {
+    assert.equal(await page.locator('#inpCropW').isDisabled(), true);
+    assert.equal(await page.locator('#inpCropW').inputValue(), '');
+    await on(page, 'resize');
+    assert.equal(await page.locator('#sliderScalePercent').isDisabled(), true);
+    await on(page, 'exif');
+    assert.equal(await page.locator('#exifArtist').isDisabled(), true);
+    assert.equal(await page.locator('#chkStripExif').isDisabled(), false);
+    await click(page, '#btnLoadDemo');
+    await ready(page, 'JPEG');
+    assert.equal(await page.locator('#exifArtist').isDisabled(), false);
+    assert.equal(await page.locator('#inpCropW').inputValue(), '1600');
+    assert.equal(await page.locator('#sliderScalePercent').isDisabled(), false);
+  }));
+
   test('chromium: a capped resize keeps the requested slider value', { timeout: 30000 }, () => open('chromium', async (page) => {
     await page.locator('#fileInput').setInputFiles(await imageFixture(page, 'panorama.png', 11000, 1, ['red']));
     await ready(page, '11000×1 · PNG');
