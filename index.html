@@ -2582,6 +2582,7 @@
           let gpsLatRef = null, gpsLngRef = null, gpsStatus = "";
           let gpsLatArr = null, gpsLngArr = null;
           let isoBase = 0, sensitivityType = 0;
+          let dateOriginal = "", dateDigitized = "";
           const isoExt = {};
 
           for (let i = 0; i < count; i++) {
@@ -2617,11 +2618,9 @@
               else if (tag === 0x8825 && isLong) ptrs.gpsIfd = view.getUint32(valOffset, little);
             } else if (group === "EXIF") {
               if (tag === 0x9003 && isAscii) {
-                const taken = this._readDate(view, valOffset, numValues);
-                if (taken) out.dateTime = taken; // keep the IFD0 fallback when this one is blank
-              } else if (tag === 0x9004 && isAscii && !out.dateTime) {
-                const dig = this._readDate(view, valOffset, numValues);
-                if (dig) out.dateTime = dig;
+                dateOriginal = this._readDate(view, valOffset, numValues);
+              } else if (tag === 0x9004 && isAscii) {
+                dateDigitized = this._readDate(view, valOffset, numValues);
               } else if (tag === 0x829a && isRational) {
                 const r = this._readRational(view, valOffset, little, isSigned);
                 if (r > 0) out.exposureTime = this.formatExposure(r); // significant digits: 1/32000 s must survive
@@ -2662,6 +2661,9 @@
           }
 
           if (group === "EXIF") {
+            // Capture time: DateTimeOriginal, then DateTimeDigitized. The IFD0 DateTime read before is only
+            // the file's last modification time, so it is merely the fallback when both are blank
+            if (dateOriginal || dateDigitized) out.dateTime = dateOriginal || dateDigitized;
             const prefOrder =
               sensitivityType === 2 || sensitivityType === 6
                 ? [0x8832, 0x8833, 0x8831]
