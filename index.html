@@ -3640,7 +3640,7 @@
       async function loadImageFromFile(file, onLoaded) {
         const looksLikeImage = file && (
           (file.type && file.type.startsWith("image/")) ||
-          /\.(jpe?g|png|webp|gif|bmp|avif|svg|heic|heif|tiff?)$/i.test(file.name || "")
+          /\.(jpe?g|a?png|webp|gif|bmp|avif|svg|ico|cur|heic|heif|tiff?)$/i.test(file.name || "")
         );
         if (!looksLikeImage) {
           showToast("请选择有效的图片文件 (JPEG / PNG / WebP / BMP / GIF)");
@@ -3924,8 +3924,9 @@
         const ext = ((meta.fileName || "").match(/\.([a-z0-9]+)$/i) || [])[1];
         const webpTarget = $("btnFormatWebp").style.display !== "none" ? "image/webp" : "image/png";
         const avifTarget = $("btnFormatAvif").style.display !== "none" ? "image/avif" : "image/png";
-        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/webp": webpTarget, "image/avif": avifTarget, "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png" };
-        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: webpTarget, avif: avifTarget, gif: "image/png", svg: "image/png", bmp: "image/png" };
+        // Icons and animated PNGs carry transparency too: they must not fall through to the JPEG default
+        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/apng": "image/png", "image/webp": webpTarget, "image/avif": avifTarget, "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png", "image/x-icon": "image/png", "image/vnd.microsoft.icon": "image/png" };
+        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", apng: "image/png", webp: webpTarget, avif: avifTarget, gif: "image/png", svg: "image/png", bmp: "image/png", ico: "image/png", cur: "image/png" };
         const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()] || "image/jpeg";
         if (target !== state.outputFormat) {
           const btn = document.querySelector(`#formatSegmented .segmented-btn[data-format="${target}"]`);
