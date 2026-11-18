@@ -3393,7 +3393,7 @@
         sourceImg: null,        // Original HTMLImageElement (or downscaled canvas for extreme inputs)
         sourceW: 0,
         sourceH: 0,
-        transformedCanvas: null, // Source after rotation/flip
+        transformedSource: null, // Original source or a canvas after rotation/flip
         rotW: 0,
         rotH: 0,
 
@@ -3611,17 +3611,18 @@
         const nw = Math.max(1, Math.floor(w * s));
         const nh = Math.max(1, Math.floor(h * s));
         const c = document.createElement("canvas");
-        c.width = nw;
-        c.height = nh;
-        const cx = c.getContext("2d");
-        if (!cx) {
+        try {
+          sizeCanvas(c, nw, nh);
+          const cx = c.getContext("2d");
+          if (!cx) throw new Error("无法分配工作画布，请尝试尺寸较小的图片");
+          cx.imageSmoothingEnabled = true;
+          cx.imageSmoothingQuality = "high";
+          drawResampled(cx, img, 0, 0, w, h, nw, nh, "high");
+          return { source: c, w: nw, h: nh, downscaled: true };
+        } catch (err) {
           releaseCanvas(c);
-          throw new Error("无法分配工作画布，请尝试尺寸较小的图片");
+          throw err;
         }
-        cx.imageSmoothingEnabled = true;
-        cx.imageSmoothingQuality = "high";
-        drawResampled(cx, img, 0, 0, w, h, nw, nh, "high");
-        return { source: c, w: nw, h: nh, downscaled: true };
       }
 
       function releaseCanvas(canvas) {
@@ -3804,8 +3805,9 @@
       function initWorkspaceWithImage(img, meta) {
         const safe = ensureSafeSource(img);
         // Free the previous working canvases right away: big canvases are scarce on mobile browsers
-        if (state.transformedCanvas && state.transformedCanvas !== safe.source) releaseCanvas(state.transformedCanvas);
+        if (state.transformedSource !== state.sourceImg) releaseCanvas(state.transformedSource);
         if (state.sourceImg instanceof HTMLCanvasElement && state.sourceImg !== safe.source) releaseCanvas(state.sourceImg);
+        state.transformedSource = null;
         if (state.outputUrl) {
           URL.revokeObjectURL(state.outputUrl);
           state.outputUrl = null;
@@ -3949,37 +3951,37 @@
 
         // Free the previous full-size bitmap BEFORE allocating the next one: holding both at once
         // doubles the peak memory, which is what makes big photos fail on phones
-        const previousCanvas = state.transformedCanvas;
-        state.transformedCanvas = null;
+        const previousCanvas = state.transformedSource;
+        state.transformedSource = null;
         if (previousCanvas && previousCanvas !== state.sourceImg) releaseCanvas(previousCanvas);
 
-        if (state.rotation === 0 && !state.flipH && !state.flipV && state.sourceImg instanceof HTMLCanvasElement) {
-          state.transformedCanvas = state.sourceImg;
-        } else {
-          const tc = document.createElement("canvas");
-          tc.width = rotW;
-          tc.height = rotH;
-          const ctx = tc.getContext("2d");
-          if (!ctx) {
-            releaseCanvas(tc);
-            showToast("无法创建画布，可能是内存不足");
-            clearOutput();
-            setEncodePending(false);
-            return;
-          }
-
-          // Exact integer matrix: Math.cos(π/2) is not 0, and a 1e-16 skew can make the browser
-          // resample (blur) the edges of a quarter turn. Smoothing off keeps this step bit-exact.
-          const [cs, sn] = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] }[state.rotation] || [1, 0];
-          const fx = state.flipH ? -1 : 1;
-          const fy = state.flipV ? -1 : 1;
-          ctx.imageSmoothingEnabled = false;
-          ctx.setTransform(cs * fx, sn * fx, -sn * fy, cs * fy, rotW / 2, rotH / 2);
-          ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
-          state.transformedCanvas = tc;
-        }
+        // Commit geometry even if a bitmap allocation fails, so another rotation or reset can recover.
         state.rotW = rotW;
         state.rotH = rotH;
+        if (state.rotation === 0 && !state.flipH && !state.flipV) {
+          // A decoded image already has the correct pixels. Avoid keeping a second full-size bitmap.
+          state.transformedSource = state.sourceImg;
+        } else {
+          const tc = document.createElement("canvas");
+          try {
+            sizeCanvas(tc, rotW, rotH);
+            const ctx = tc.getContext("2d");
+            if (!ctx) throw new Error("无法创建画布，可能是内存不足");
+
+            // Exact integer matrix with smoothing off keeps quarter turns pixel-aligned.
+            const [cs, sn] = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] }[state.rotation];
+            const fx = state.flipH ? -1 : 1;
+            const fy = state.flipV ? -1 : 1;
+            ctx.imageSmoothingEnabled = false;
+            ctx.setTransform(cs * fx, sn * fx, -sn * fy, cs * fy, rotW / 2, rotH / 2);
+            ctx.drawImage(state.sourceImg, -srcW / 2, -srcH / 2);
+            state.transformedSource = tc;
+          } catch (err) {
+            releaseCanvas(tc);
+            console.error(err);
+            showToast("无法创建变换后的画布，请尝试较小的图片或重置图像");
+          }
+        }
 
         if (resetCropAndResize) {
           state.cropX = 0;
@@ -4002,6 +4004,14 @@
 
         syncCropInputs();
         syncResizeInputs();
+        if (!state.transformedSource) {
+          compareBeforeKey = null;
+          releaseCanvas(els.previewCanvas);
+          els.cropOverlay.classList.remove("visible");
+          clearOutput();
+          setEncodePending(false);
+          return;
+        }
         if (state.compareMode) renderCompareView();
         else renderStageCanvas();
         scheduleOutputEncode();
@@ -4137,7 +4147,7 @@
 
       // Fit stage canvas cleanly into viewport while preserving exact aspect ratio
       function renderStageCanvas() {
-        if (!state.hasImage || !state.transformedCanvas) return;
+        if (!state.hasImage || !state.transformedSource) return;
 
         const vpRect = els.canvasViewport.getBoundingClientRect();
         const vpStyle = getComputedStyle(els.canvasViewport);
@@ -4178,7 +4188,7 @@
           const key = `${buildGeometryKey(state.targetW, state.targetH)}|${w}x${h}|${smoothing}`;
           if (key !== compareBeforeKey) {
             ctx.clearRect(0, 0, w, h);
-            const { transformedCanvas: src, cropX: x, cropY: y, cropW: cw, cropH: ch } = state;
+            const { transformedSource: src, cropX: x, cropY: y, cropW: cw, cropH: ch } = state;
             try {
               // The source side must also sample only the crop, not the pixels next to it.
               drawResampled(ctx, src, x, y, cw, ch, w, h, smoothing ? "medium" : "pixelated");
@@ -4195,14 +4205,14 @@
           compareBeforeKey = null;
           els.previewCanvas.style.clipPath = "";
           ctx.clearRect(0, 0, w, h);
-          ctx.drawImage(state.transformedCanvas, 0, 0, w, h);
+          ctx.drawImage(state.transformedSource, 0, 0, w, h);
         }
 
         updateCropBoxVisual(dispW, dispH);
       }
 
       function updateCropBoxVisual(dispW, dispH) {
-        if (!state.hasImage) return;
+        if (!state.transformedSource) return;
         const innerW = dispW || els.canvasStageInner.clientWidth;
         const innerH = dispH || els.canvasStageInner.clientHeight;
         if (!innerW || !innerH) return;
@@ -4698,7 +4708,7 @@
 
       async function generateOutputBlob(seq) {
         if (!state.hasImage) return;
-        if (!state.transformedCanvas) throw new Error("无法创建画布，可能是内存不足");
+        if (!state.transformedSource) throw new Error("无法创建画布，可能是内存不足");
 
         const outW = state.targetW;
         const outH = state.targetH;
@@ -4730,7 +4740,7 @@
 
           ctx.imageSmoothingEnabled = state.resampleQuality !== "pixelated";
           if (ctx.imageSmoothingEnabled) ctx.imageSmoothingQuality = state.resampleQuality;
-          drawResampled(ctx, state.transformedCanvas, state.cropX, state.cropY, state.cropW, state.cropH,
+          drawResampled(ctx, state.transformedSource, state.cropX, state.cropY, state.cropW, state.cropH,
             outW, outH, state.resampleQuality);
 
           if (isBmp) {
@@ -4877,7 +4887,7 @@
       }
 
       function isCurrentCompareOutput(url) {
-        return Boolean(state.compareMode && state.transformedCanvas && !isEncodePending && url &&
+        return Boolean(state.compareMode && state.transformedSource && !isEncodePending && url &&
           url === state.outputUrl && outputGeometryKey === buildGeometryKey(state.targetW, state.targetH));
       }
 
