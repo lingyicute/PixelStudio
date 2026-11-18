@@ -68,6 +68,14 @@ async function readPixels(page, bytes, fmt) {
   }, { base64: bytes.toString('base64'), fmt });
 }
 
+function withJpegOrientation(jpeg, orientation) {
+  const tiff = Buffer.from('49492a0008000000010012010300010000000100000000000000', 'hex');
+  tiff.writeUInt16LE(orientation, 18);
+  const app1 = Buffer.from('ffe10022457869660000', 'hex');
+  const split = jpeg.readUInt16BE(2) === 0xffe0 ? 4 + jpeg.readUInt16BE(4) : 2;
+  return Buffer.concat([jpeg.subarray(0, split), app1, tiff, jpeg.subarray(split)]);
+}
+
 for (const engine of engines) {
   test(`${engine}: pixel crop, resize, rotations, BMP matte, and comparison`, { timeout: 45000 }, () => open(engine, async (page) => {
     const fixture = await imageFixture(page, 'edges.png', 3, 2, ['red', '#00ff00', 'red', 'blue', null, 'white']);
@@ -110,6 +118,38 @@ for (const engine of engines) {
     const bmp = (await download(page)).bytes;
     assert.equal(bmp.toString('ascii', 0, 2), 'BM');
     assert.deepEqual([...bmp.subarray(57, 60)], [0, 0, 0]); // Transparent pixel is on bottom row, centre.
+  }));
+
+  test(`${engine}: EXIF orientation is applied once before pixel transforms`, { timeout: 45000 }, () => open(engine, async (page) => {
+    const encoded = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 3; canvas.height = 2;
+      const ctx = canvas.getContext('2d');
+      ['red', 'lime', 'blue', 'yellow', 'magenta', 'cyan'].forEach((color, i) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(i % 3, Math.floor(i / 3), 1, 1);
+      });
+      return canvas.toDataURL('image/jpeg', 0.98).split(',')[1];
+    });
+    const jpeg = withJpegOrientation(Buffer.from(encoded, 'base64'), 6);
+    const source = await readPixels(page, jpeg, 'jpeg');
+    assert.deepEqual([source.width, source.height], [2, 3]);
+    await page.locator('#fileInput').setInputFiles({ name: 'oriented.jpg', mimeType: 'image/jpeg', buffer: jpeg });
+    await ready(page, '2×3 · JPEG');
+    await on(page, 'export');
+    await format(page, 'png');
+    await ready(page, '2×3 · PNG (无损)');
+    assert.deepEqual(await readPixels(page, (await download(page)).bytes, 'png'), source);
+    await click(page, '#btnRotateRight');
+    await ready(page, '3×2 · PNG (无损)');
+    const expected = [];
+    for (let x = 0; x < source.width; x++) {
+      for (let y = source.height - 1; y >= 0; y--) {
+        const i = (y * source.width + x) * 4;
+        expected.push(...source.bytes.slice(i, i + 4));
+      }
+    }
+    assert.deepEqual(await readPixels(page, (await download(page)).bytes, 'png'), { width: 3, height: 2, bytes: expected });
   }));
 
   test(`${engine}: EXIF edit and strip, quality modes, and actual export bytes`, { timeout: 45000 }, () => open(engine, async (page) => {
