@@ -2481,10 +2481,8 @@
           return "";
         },
 
-        // Parse metadata from an ArrayBuffer (JPEG, PNG or WebP).
-        async parse(arrayBuffer) {
-          const view = new DataView(arrayBuffer);
-          const result = {
+        emptyMetadata() {
+          return {
             hasExif: false,
             make: "",
             model: "",
@@ -2500,7 +2498,12 @@
             gpsLat: "",
             gpsLng: ""
           };
+        },
 
+        // Parse editable metadata from an ArrayBuffer (JPEG, PNG or WebP).
+        async parse(arrayBuffer) {
+          const view = new DataView(arrayBuffer);
+          const result = this.emptyMetadata();
           const format = this.detectFormat(view);
 
           // Check JPEG SOI: 0xFFD8
@@ -3755,35 +3758,57 @@
         }
       }
 
+      function isAvifHeader(view) {
+        if (view.byteLength < 16 || view.getUint32(4) !== 0x66747970) return false; // ftyp
+        const isAvifBrand = (offset) => {
+          const brand = view.getUint32(offset);
+          return brand === 0x61766966 || brand === 0x61766973; // avif / avis
+        };
+        if (isAvifBrand(8)) return true;
+        const end = Math.min(view.byteLength, view.getUint32(0));
+        for (let offset = 16; offset + 4 <= end; offset += 4) {
+          if (isAvifBrand(offset)) return true;
+        }
+        return false;
+      }
+
       async function loadImageFromFile(file, onLoaded) {
         const token = ++loadToken; // An invalid selection also supersedes a previous in-flight load.
-        const looksLikeImage = file && (
-          (file.type && file.type.startsWith("image/")) ||
-          /\.(jpe?g|a?png|webp|gif|bmp|avif|svg|ico|cur|heic|heif|tiff?)$/i.test(file.name || "")
-        );
-        if (!looksLikeImage) {
-          showToast("请选择有效的图片文件 (JPEG / PNG / WebP / BMP / GIF)");
-          return;
-        }
         try {
-          const arrayBuffer = await file.arrayBuffer();
+          const header = new DataView(await file.slice(0, 256).arrayBuffer());
           if (token !== loadToken) return;
-          let parsedExif;
-          try {
-            parsedExif = await ExifEngine.parse(arrayBuffer);
-          } catch (parseErr) {
-            console.warn("EXIF 解析失败，已忽略", parseErr);
-            parsedExif = await ExifEngine.parse(new ArrayBuffer(0));
+          const exifFormat = ExifEngine.detectFormat(header);
+          const sourceFormat = exifFormat || (isAvifHeader(header) ? "image/avif" : "");
+          const ext = (file.name || "").split(".").pop().toLowerCase();
+          if (!sourceFormat && !file.type.startsWith("image/") && !/^(jpe?g|a?png|webp|gif|bmp|avif|svg|ico|cur|heic|heif|tiff?)$/.test(ext)) {
+            showToast("请选择有效的图片文件 (JPEG / PNG / WebP / BMP / GIF)");
+            return;
           }
-          if (token !== loadToken) return; // Reading compressed text may yield to a newer selection.
-          const img = await decodeLocalImage(file);
+          let exif = ExifEngine.emptyMetadata();
+          let metadataStatus = exifFormat ? "read" : "unsupported";
+          if (exifFormat) {
+            try {
+              const bytes = await file.arrayBuffer();
+              if (token !== loadToken) return;
+              exif = await ExifEngine.parse(bytes);
+            } catch (err) {
+              if (token !== loadToken) return;
+              metadataStatus = "failed";
+              console.warn("EXIF 读取失败，继续解码图片", err);
+            }
+          }
           if (token !== loadToken) return;
-          const fallbackExt = ((file.type || "").split("/")[1] || "png").replace("jpeg", "jpg").replace("+xml", "");
+          // Use the probed format for decoding even when the file name or reported type is wrong.
+          const mime = sourceFormat || (ext === "svg" && !file.type.startsWith("image/") ? "image/svg+xml" : file.type);
+          const img = await decodeLocalImage(mime === file.type ? file : file.slice(0, file.size, mime));
+          if (token !== loadToken) return;
+          const fallbackExt = ((mime || "").split("/")[1] || "png").replace("jpeg", "jpg").replace("+xml", "");
           const downscaled = initWorkspaceWithImage(img, {
             fileName: (file.name || "").trim() || `clipboard.${fallbackExt}`,
             fileSize: file.size,
-            mimeType: file.type,
-            exif: parsedExif
+            sourceFormat,
+            metadataStatus,
+            exif
           });
           if (!downscaled) onLoaded?.();
         } catch (err) {
@@ -3872,7 +3897,7 @@
           initWorkspaceWithImage(img, {
             fileName: "alpine_sunset_demo.jpg",
             fileSize: blob.size,
-            mimeType: "image/jpeg",
+            sourceFormat: "image/jpeg",
             exif: {
               hasExif: true,
               make: "SONY",
@@ -3979,9 +4004,10 @@
         };
         syncExifToInputs();
 
-        els.exifStatusSubtitle.textContent = meta.exif.hasExif
-          ? "已从原图读取到元数据，可直接编辑或清空"
-          : "原图无 EXIF 数据，可在此写入新的相机参数";
+        els.exifStatusSubtitle.textContent = meta.exif.hasExif ? "已从原图读取到元数据，可直接编辑或清空"
+          : meta.metadataStatus === "unsupported" ? "本工具不读取此输入格式的元数据，可填写新的相机参数"
+          : meta.metadataStatus === "failed" ? "无法读取原图的元数据，仍可填写新的相机参数"
+          : "未读到可编辑的元数据，可填写新的相机参数";
 
         // Set default output filename without extension
         const baseName = meta.fileName.replace(/\.[^/.]+$/, "") || "image";
@@ -4011,19 +4037,16 @@
         return safe.downscaled;
       }
 
-      // Export in the format the picture came in (unless the user already chose one manually):
-      // a PNG / WebP with transparency would otherwise silently be flattened onto a JPEG matte.
-      // PNG is also switched to lossless, because its "lossy" mode quantizes the colours.
-      function applyDefaultOutputFormat(meta) {
+      // Preserve alpha by default even for unknown inputs; only actual JPEG defaults to JPEG.
+      function applyDefaultOutputFormat({ sourceFormat }) {
         if (state.formatTouched) return;
-        const ext = ((meta.fileName || "").match(/\.([a-z0-9]+)$/i) || [])[1];
-        const webpTarget = $("btnFormatWebp").style.display !== "none" ? "image/webp" : "image/png";
-        const avifTarget = $("btnFormatAvif").style.display !== "none" ? "image/avif" : "image/png";
-        // Icons and animated PNGs carry transparency too: they must not fall through to the JPEG default
-        const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/apng": "image/png", "image/webp": webpTarget, "image/avif": avifTarget, "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png", "image/x-icon": "image/png", "image/vnd.microsoft.icon": "image/png" };
-        const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", apng: "image/png", webp: webpTarget, avif: avifTarget, gif: "image/png", svg: "image/png", bmp: "image/png", ico: "image/png", cur: "image/png" };
-        const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()] || "image/jpeg";
-        setOutputFormat(target);
+        if (sourceFormat === "image/jpeg" ||
+            (sourceFormat === "image/webp" && $("btnFormatWebp").style.display !== "none") ||
+            (sourceFormat === "image/avif" && $("btnFormatAvif").style.display !== "none")) {
+          setOutputFormat(sourceFormat);
+        } else {
+          setOutputFormat("image/png");
+        }
       }
 
       /* ======================================================================
@@ -5785,28 +5808,17 @@
         });
 
         // 8. Format & Lossy/Lossless Compression Controls
-        // Encoding capabilities vary by browser version (decoding support does not imply encoding support).
-        let canEncodeWebp = false;
-        try {
-          const testWebp = document.createElement("canvas");
-          testWebp.width = 1;
-          testWebp.height = 1;
-          canEncodeWebp = testWebp.toDataURL("image/webp").startsWith("data:image/webp");
-          releaseCanvas(testWebp);
-        } catch {
-          canEncodeWebp = false;
+        // Probe both optional encoders before a user can import a file. Decoders alone do not suffice.
+        for (const [id, format] of [["btnFormatWebp", "image/webp"], ["btnFormatAvif", "image/avif"]]) {
+          const testCanvas = document.createElement("canvas");
+          let supported = false;
+          try {
+            sizeCanvas(testCanvas, 1, 1);
+            supported = testCanvas.toDataURL(format).startsWith(`data:${format};`);
+          } catch { /* unavailable encoder */ }
+          finally { releaseCanvas(testCanvas); }
+          $(id).style.display = supported ? "flex" : "none";
         }
-        if (!canEncodeWebp) {
-          $("btnFormatWebp").style.display = "none";
-        }
-        const testAvif = document.createElement("canvas");
-        testAvif.width = 2; testAvif.height = 2;
-        testAvif.toBlob((b) => {
-          releaseCanvas(testAvif);
-          if (b && b.type === "image/avif") {
-            $("btnFormatAvif").style.display = "flex";
-          }
-        }, "image/avif");
 
         document.querySelectorAll("#formatSegmented .segmented-btn").forEach((btn) => {
           btn.addEventListener("click", () => {

@@ -166,6 +166,22 @@ for (const engine of engines) {
 }
 
 if (engines.includes('chromium')) {
+  test('chromium: detected file format and unknown input preserve transparency', { timeout: 30000 }, () => open('chromium', async (page) => {
+    const png = await imageFixture(page, 'mislabeled.jpg', 2, 1, ['red', null]);
+    await page.locator('#fileInput').setInputFiles({ ...png, mimeType: 'image/jpeg' });
+    await ready(page, '2×1 · PNG (无损)');
+    assert.deepEqual((await readPixels(page, (await download(page)).bytes, 'png')).bytes, [255, 0, 0, 255, 0, 0, 0, 0]);
+    const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    await page.locator('#fileInput').setInputFiles({ name: 'unknown-image', mimeType: 'image/gif', buffer: gif });
+    await ready(page, '1×1 · PNG (无损)');
+    assert.equal((await readPixels(page, (await download(page)).bytes, 'png')).bytes[3], 0);
+    await on(page, 'export');
+    await format(page, 'jpeg');
+    await ready(page, 'JPEG');
+    await page.locator('#fileInput').setInputFiles(png);
+    await ready(page, '2×1 · JPEG');
+  }));
+
   test('chromium: PNG defaults to lossless and BMP does not change a manual preference', { timeout: 30000 }, () => open('chromium', async (page) => {
     await page.locator('#fileInput').setInputFiles(await imageFixture(page, 'modes.png', 2, 1, ['red', 'green']));
     await ready(page, 'PNG (无损)');
