@@ -2525,19 +2525,16 @@
           }
           // Check WebP: RIFF....WEBP, EXIF chunk
           else if (format === "image/webp") {
-            let offset = 12;
-            while (offset + 8 <= view.byteLength) {
-              const type = view.getUint32(offset, false);
-              const size = view.getUint32(offset + 4, true);
-              if (offset + 8 + size > view.byteLength) break;
-              if (type === 0x45584946) { // 'EXIF'
-                let start = offset + 8;
-                // Some writers prefix the payload with "Exif\0\0"
-                if (size >= 6 && view.getUint32(start, false) === 0x45786966 && view.getUint16(start + 4, false) === 0) start += 6;
-                this._parseTiff(view, start, size - (start - (offset + 8)), result);
+            try {
+              const { chunks } = this._webpChunks(view);
+              const exif = chunks.find(({ fourcc }) => fourcc === "EXIF");
+              if (exif) {
+                const { start, payload } = exif;
+                // Some writers prefix the TIFF payload with "Exif\0\0".
+                const prefix = payload.length >= 6 && view.getUint32(start) === 0x45786966 && view.getUint16(start + 4) === 0 ? 6 : 0;
+                this._parseTiff(view, start + prefix, payload.length - prefix, result);
               }
-              offset += 8 + size + (size & 1);
-            }
+            } catch { /* invalid RIFF framing: do not read optional metadata */ }
           }
           return result;
         },
@@ -3269,66 +3266,67 @@
           return out;
         },
 
-        // Inject or strip EXIF chunk in a RIFF/WebP container (upgrades simple VP8/VP8L files to VP8X extended format)
-        injectWebpExif(webpBytes, stripExif, meta, canvasW, canvasH) {
-          if (webpBytes.length < 20) return webpBytes;
-          const tag = (off) => String.fromCharCode(webpBytes[off], webpBytes[off + 1], webpBytes[off + 2], webpBytes[off + 3]);
-          if (tag(0) !== "RIFF" || tag(8) !== "WEBP") return webpBytes;
-
-          // Walk existing chunks
+        // RFC 9649: chunk bounds include the zero padding byte, and trailing bytes are not part of RIFF.
+        _webpChunks(view) {
+          if (this.detectFormat(view) !== "image/webp") throw new Error("无法读取 WebP 容器");
+          const end = 8 + view.getUint32(4, true);
+          if (end < 20 || end > view.byteLength || end % 2 !== 0) throw new Error("WebP 容器长度无效");
           const chunks = [];
-          let pos = 12;
-          while (pos + 8 <= webpBytes.length) {
-            const fourcc = tag(pos);
-            const size = (webpBytes[pos + 4] | (webpBytes[pos + 5] << 8) | (webpBytes[pos + 6] << 16) | (webpBytes[pos + 7] << 24)) >>> 0;
-            const padded = size + (size & 1);
-            if (pos + 8 + size > webpBytes.length) break;
-            chunks.push({ fourcc, payload: webpBytes.subarray(pos + 8, pos + 8 + size) });
-            pos += 8 + padded;
+          for (let pos = 12; pos < end;) {
+            if (pos + 8 > end) throw new Error("WebP 块头不完整");
+            const size = view.getUint32(pos + 4, true);
+            const start = pos + 8;
+            const padding = size & 1;
+            const next = start + size + padding;
+            if (next > end || (padding && view.getUint8(next - 1) !== 0)) throw new Error("WebP 块长度或填充无效");
+            const fourcc = String.fromCharCode(view.getUint8(pos), view.getUint8(pos + 1), view.getUint8(pos + 2), view.getUint8(pos + 3));
+            if (fourcc === "VP8X" && (pos !== 12 || size !== 10)) throw new Error("WebP 扩展头无效");
+            chunks.push({ fourcc, start, payload: new Uint8Array(view.buffer, view.byteOffset + start, size) });
+            pos = next;
           }
-          if (chunks.length === 0) return webpBytes;
+          return { end, chunks };
+        },
 
-          let vp8x = chunks.find((c) => c.fourcc === "VP8X");
-          const body = chunks.filter((c) => c.fourcc !== "VP8X" && c.fourcc !== "EXIF" && (!stripExif || c.fourcc !== "XMP "));
-          let ordered;
+        // Add EXIF (upgrading simple VP8/VP8L to VP8X) or strip all EXIF/XMP chunks.
+        injectWebpExif(webpBytes, stripExif, meta, canvasW, canvasH) {
+          const view = new DataView(webpBytes.buffer, webpBytes.byteOffset, webpBytes.byteLength);
+          const { chunks, end } = this._webpChunks(view);
+          const vp8x = chunks[0]?.fourcc === "VP8X" ? chunks[0].payload : null;
+          if (!chunks.some(({ fourcc }) => fourcc === "VP8 " || fourcc === "VP8L" || (vp8x && fourcc === "ANMF"))) {
+            throw new Error("WebP 缺少图像块");
+          }
+          const body = chunks.filter(({ fourcc }) => fourcc !== "VP8X" && fourcc !== "EXIF" && (!stripExif || fourcc !== "XMP "));
+          let ordered = body;
           if (stripExif) {
-            if (!chunks.some((c) => c.fourcc === "EXIF" || c.fourcc === "XMP ")) return webpBytes;
-            if (vp8x && vp8x.payload.length >= 10) {
-              const p = new Uint8Array(vp8x.payload);
-              p[0] &= ~(0x08 | 0x04); // Clear EXIF & XMP flags
-              const isSimple = p[0] === 0 && body.length === 1 && (body[0].fourcc === "VP8 " || body[0].fourcc === "VP8L");
-              ordered = isSimple ? body : [{ fourcc: "VP8X", payload: p }, ...body];
-            } else {
-              ordered = body;
+            if (chunks.length === body.length + (vp8x ? 1 : 0) && !(vp8x?.[0] & 0x0c)) {
+              return end === webpBytes.length ? webpBytes : webpBytes.subarray(0, end);
+            }
+            if (vp8x) {
+              const header = new Uint8Array(vp8x);
+              header[0] &= ~0x0c; // Clear EXIF and XMP flags.
+              const simple = header[0] === 0 && body.length === 1 && (body[0].fourcc === "VP8 " || body[0].fourcc === "VP8L");
+              if (!simple) ordered = [{ fourcc: "VP8X", payload: header }, ...body];
             }
           } else {
-            // Build / update VP8X header with the EXIF flag
-            if (vp8x && vp8x.payload.length >= 10) {
-              const p = new Uint8Array(vp8x.payload);
-              p[0] |= 0x08; // E (EXIF) flag
-              vp8x = { fourcc: "VP8X", payload: p };
-            } else {
-              let hasAlpha = false;
-              const vp8l = chunks.find((c) => c.fourcc === "VP8L");
-              if (vp8l && vp8l.payload.length >= 5 && vp8l.payload[0] === 0x2f) {
-                const bits = vp8l.payload[1] | (vp8l.payload[2] << 8) | (vp8l.payload[3] << 16) | (vp8l.payload[4] << 24);
-                hasAlpha = ((bits >>> 28) & 1) === 1;
-              }
-              if (chunks.some((c) => c.fourcc === "ALPH")) hasAlpha = true;
-              const p = new Uint8Array(10);
-              p[0] = 0x08 | (hasAlpha ? 0x10 : 0);
-              const w = Math.max(1, canvasW) - 1;
-              const h = Math.max(1, canvasH) - 1;
-              p[4] = w & 0xff; p[5] = (w >> 8) & 0xff; p[6] = (w >> 16) & 0xff;
-              p[7] = h & 0xff; p[8] = (h >> 8) & 0xff; p[9] = (h >> 16) & 0xff;
-              vp8x = { fourcc: "VP8X", payload: p };
+            const header = vp8x ? new Uint8Array(vp8x) : new Uint8Array(10);
+            if (!vp8x) {
+              const vp8l = body.find(({ fourcc }) => fourcc === "VP8L")?.payload;
+              // The VP8L alpha hint is bit 28 of the four bytes after its 0x2f signature.
+              if ((vp8l?.[0] === 0x2f && (vp8l[4] & 0x10)) || body.some(({ fourcc }) => fourcc === "ALPH")) header[0] |= 0x10;
+              if (body.some(({ fourcc }) => fourcc === "ICCP")) header[0] |= 0x20;
+              const w = canvasW - 1;
+              const h = canvasH - 1;
+              header[4] = w & 0xff; header[5] = (w >> 8) & 0xff; header[6] = (w >> 16) & 0xff;
+              header[7] = h & 0xff; header[8] = (h >> 8) & 0xff; header[9] = (h >> 16) & 0xff;
             }
-            const exifChunk = { fourcc: "EXIF", payload: this.buildTiffBuffer(meta, { w: canvasW, h: canvasH }) };
-            // RFC 9649 requires the EXIF chunk to precede any XMP chunk
-            const xmpIdx = body.findIndex((c) => c.fourcc === "XMP ");
-            ordered = xmpIdx >= 0
-              ? [vp8x, ...body.slice(0, xmpIdx), exifChunk, ...body.slice(xmpIdx)]
-              : [vp8x, ...body, exifChunk];
+            header[0] |= 0x08;
+            const xmpIndex = body.findIndex(({ fourcc }) => fourcc === "XMP ");
+            if (xmpIndex >= 0) header[0] |= 0x04;
+            else header[0] &= ~0x04;
+            body.splice(xmpIndex >= 0 ? xmpIndex : body.length, 0, {
+              fourcc: "EXIF", payload: this.buildTiffBuffer(meta, { w: canvasW, h: canvasH })
+            });
+            ordered = [{ fourcc: "VP8X", payload: header }, ...body];
           }
 
           let total = 12;
@@ -4902,13 +4900,12 @@
             const buf = await rawBlob.arrayBuffer();
             if (seq !== encodeSeq) return;
             const bytes = new Uint8Array(buf);
-            if (state.compressionMode === "lossless") {
-              for (const { type } of ExifEngine._webpChunks(new DataView(buf))) {
-                if (type === 0x5650384c) webpLossless = true; // VP8L, not lossy VP8.
-              }
-            }
             const processed = ExifEngine.injectWebpExif(bytes, state.stripExif, state.exif, outW, outH);
             if (processed !== bytes) finalBlob = new Blob([processed], { type: "image/webp" });
+            if (state.compressionMode === "lossless") {
+              const view = new DataView(processed.buffer, processed.byteOffset, processed.byteLength);
+              webpLossless = ExifEngine._webpChunks(view).chunks.some(({ fourcc }) => fourcc === "VP8L");
+            }
           }
         } catch (err) {
           if (seq !== encodeSeq) return;

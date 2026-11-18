@@ -110,6 +110,24 @@ test('WebP bounds EXIF by the RIFF size and cleans feature flags on strip', asyn
   assert.throws(() => exif.injectWebpExif(added.subarray(0, -1), true), /WebP/);
 });
 
+test('WebP inserts EXIF before XMP, keeps alpha, and validates padding', () => {
+  const header = Buffer.from([0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const image = riffChunk('VP8L', Buffer.from([0x2f, 0, 0, 0, 0x10]));
+  const xmp = riffChunk('XMP ', ascii('original'));
+  const source = webp(riffChunk('VP8X', header), image, xmp);
+  const added = Buffer.from(exif.injectWebpExif(source, false, { make: 'Camera' }, 1, 1));
+  const chunks = exif._webpChunks(new DataView(arrayBuffer(added))).chunks;
+  assert.equal(added[20], 0x1c);
+  assert.equal(chunks.map((item) => item.fourcc).join(','), 'VP8X,VP8L,EXIF,XMP ');
+  assert.equal(Buffer.from(chunks[3].payload).toString(), 'original');
+  const stripped = Buffer.from(exif.injectWebpExif(added, true));
+  assert.equal(stripped[20], 0x10);
+  assert.deepEqual(stripped.subarray(30), image);
+  const badPadding = Buffer.from(image);
+  badPadding[badPadding.length - 1] = 1;
+  assert.throws(() => exif.injectWebpExif(webp(badPadding), true), /WebP/);
+});
+
 test('PNG stripping removes text, EXIF and trailing data, but rejects a missing IEND', async () => {
   const base = png();
   const withText = png(pngChunk('tEXt', ascii('Author\0Private')));
