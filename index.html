@@ -4136,6 +4136,8 @@
         });
       }
 
+      let compareBeforeKey = null;
+
       // Fit stage canvas cleanly into viewport while preserving exact aspect ratio
       function renderStageCanvas() {
         if (!state.hasImage || !state.transformedCanvas) return;
@@ -4170,20 +4172,33 @@
         sizeCanvas(els.previewCanvas, Math.round(dispW * dpr), Math.round(dispH * dpr));
 
         const ctx = els.previewCanvas.getContext("2d");
-        ctx.imageSmoothingEnabled = state.resampleQuality !== "pixelated";
+        if (!ctx) return;
+        const w = els.previewCanvas.width, h = els.previewCanvas.height;
+        const smoothing = state.resampleQuality !== "pixelated";
+        ctx.imageSmoothingEnabled = smoothing;
         ctx.imageSmoothingQuality = "high";
-        ctx.clearRect(0, 0, els.previewCanvas.width, els.previewCanvas.height);
         if (state.compareMode) {
-          // "Before" half = untouched cropped source pixels
-          ctx.drawImage(
-            state.transformedCanvas,
-            state.cropX, state.cropY, state.cropW, state.cropH,
-            0, 0, els.previewCanvas.width, els.previewCanvas.height
-          );
+          const key = `${buildGeometryKey(state.targetW, state.targetH)}|${w}x${h}|${smoothing}`;
+          if (key !== compareBeforeKey) {
+            ctx.clearRect(0, 0, w, h);
+            const { transformedCanvas: src, cropX: x, cropY: y, cropW: cw, cropH: ch } = state;
+            try {
+              // The source side must also sample only the crop, not the pixels next to it.
+              drawResampled(ctx, src, x, y, cw, ch, w, h, smoothing ? "medium" : "pixelated");
+              compareBeforeKey = key;
+            } catch {
+              // A large temporary crop may not fit on a constrained device. Show nearest-neighbour instead.
+              ctx.imageSmoothingEnabled = false;
+              ctx.drawImage(src, x, y, cw, ch, 0, 0, w, h);
+              compareBeforeKey = key;
+            }
+          }
           updateCompareClip();
         } else {
+          compareBeforeKey = null;
           els.previewCanvas.style.clipPath = "";
-          ctx.drawImage(state.transformedCanvas, 0, 0, els.previewCanvas.width, els.previewCanvas.height);
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(state.transformedCanvas, 0, 0, w, h);
         }
 
         updateCropBoxVisual(dispW, dispH);
@@ -4551,8 +4566,9 @@
         // Crop drags call this on every pointer move: only write the label when it really changes
         const label = pending ? "编码中…" : "导出保存图片";
         if (els.btnDownloadText.textContent !== label) els.btnDownloadText.textContent = label;
-        if (pending && state.compareMode && els.compareRightLabel.textContent !== "编码中…") {
-          els.compareRightLabel.textContent = "编码中…";
+        if (pending && state.compareMode) {
+          clearCompareAfter();
+          if (els.compareRightLabel.textContent !== "编码中…") els.compareRightLabel.textContent = "编码中…";
         }
       }
 
@@ -4893,63 +4909,73 @@
       /* ======================================================================
          MODULE 9: BEFORE / AFTER VISUAL SPLIT COMPARISON
          ====================================================================== */
-      let compareAfterCache = null; // { url, img, ready } of the decoded "after" image
+      let compareAfterCache = null; // Decoded output (or failure), keyed by object URL
+
+      function clearCompareAfter() {
+        const canvas = els.compareAfterCanvas;
+        if (canvas.width || canvas.height) releaseCanvas(canvas);
+      }
 
       function paintCompareAfter(img) {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const w = Math.round(els.canvasStageInner.clientWidth * dpr);
         const h = Math.round(els.canvasStageInner.clientHeight * dpr);
-        if (!w || !h) return;
+        if (!w || !h) return false;
         sizeCanvas(els.compareAfterCanvas, w, h);
         const aCtx = els.compareAfterCanvas.getContext("2d");
+        if (!aCtx) return false;
         aCtx.imageSmoothingEnabled = state.resampleQuality !== "pixelated";
         aCtx.imageSmoothingQuality = "high";
         aCtx.clearRect(0, 0, w, h);
         aCtx.drawImage(img, 0, 0, w, h);
-        updateCompareClip();
+        return true;
+      }
+
+      function isCurrentCompareOutput(url) {
+        return Boolean(state.compareMode && state.transformedCanvas && !isEncodePending && url &&
+          url === state.outputUrl && outputGeometryKey === buildGeometryKey(state.targetW, state.targetH));
       }
 
       function renderCompareView() {
         if (!state.compareMode) return;
-
-        // Stage is re-fitted to the OUTPUT aspect ratio and the "before" (cropped source) half is painted
         renderStageCanvas();
-
-        const outW = Math.max(1, Math.round(state.targetW));
-        const outH = Math.max(1, Math.round(state.targetH));
-        if (!state.outputUrl || !state.outputBlob || outputGeometryKey !== buildGeometryKey(outW, outH)) {
-          // No (valid) encoded result yet, geometry changed, or the encode failed: never leave a stale "after" image behind
-          const aCanvas = els.compareAfterCanvas;
-          aCanvas.getContext("2d").clearRect(0, 0, aCanvas.width, aCanvas.height);
+        const url = state.outputUrl;
+        if (!isCurrentCompareOutput(url)) {
+          clearCompareAfter();
           els.compareRightLabel.textContent = isEncodePending ? "编码中…" : "输出预览";
           return;
         }
 
-        // Decode the actual encoded output so the "after" half shows true compression artifacts.
-        // The decoded image is cached per output URL: a window resize repaints this view on every
-        // frame and must not re-decode the whole file each time.
-        const url = state.outputUrl;
+        // Keep a decoded image per URL. A late callback must not paint after the settings changed,
+        // even if the old URL is still retained so that the user can revert to it.
         let entry = compareAfterCache;
         if (!entry || entry.url !== url) {
+          clearCompareAfter();
           const img = new Image();
-          entry = compareAfterCache = { url, img, ready: false };
-          img.onload = () => {
-            entry.ready = true;
-            if (compareAfterCache === entry && url === state.outputUrl && state.compareMode) paintCompareAfter(img);
+          entry = compareAfterCache = { url, img, ready: false, failed: false };
+          const previewSettled = (ok) => {
+            entry.ready = ok;
+            entry.failed = !ok;
+            if (compareAfterCache === entry && isCurrentCompareOutput(url)) renderCompareView();
           };
-          img.onerror = () => {
-            if (compareAfterCache === entry) {
-              compareAfterCache = null;
-              const aCanvas = els.compareAfterCanvas;
-              aCanvas.getContext("2d").clearRect(0, 0, aCanvas.width, aCanvas.height);
-            }
-          };
+          img.onload = () => previewSettled(true);
+          img.onerror = () => previewSettled(false);
           img.src = url;
-        } else if (entry.ready) {
-          paintCompareAfter(entry.img);
         }
-
-        els.compareRightLabel.textContent = isEncodePending ? "编码中…" : (outputCompareLabel || "输出预览");
+        if (!entry.ready && !entry.failed) {
+          els.compareRightLabel.textContent = "正在加载预览…";
+          return;
+        }
+        try {
+          if (entry.ready && paintCompareAfter(entry.img)) {
+            els.compareRightLabel.textContent = outputCompareLabel || "输出预览";
+            return;
+          }
+        } catch (err) {
+          console.warn("无法绘制输出预览", err);
+        }
+        clearCompareAfter();
+        els.compareRightLabel.textContent = "输出预览不可用";
       }
 
       function updateCompareClip() {
