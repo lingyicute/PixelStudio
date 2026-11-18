@@ -265,6 +265,30 @@ if (engines.includes('chromium')) {
     await ready(page, '2×20 · PNG');
   }));
 
+  test('chromium: a theme override survives unavailable storage and OS changes', { timeout: 30000 }, () => open('chromium', async (page) => {
+    const trigger = page.locator('#btnThemeToggle');
+    assert.equal(await page.locator('html').getAttribute('data-seed'), null);
+    assert.equal(await trigger.getAttribute('aria-pressed'), 'false');
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    await click(page, '#btnThemeToggle');
+    assert.equal(await trigger.getAttribute('aria-pressed'), 'false');
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.locator('html').getAttribute('data-theme'), null);
+  }, { colorScheme: 'light' }, () => {
+    const get = Storage.prototype.getItem;
+    const set = Storage.prototype.setItem;
+    Storage.prototype.getItem = function (key) {
+      return key === 'pixelstudio.prefs' ? '{"seed":"constructor"}' : get.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'pixelstudio.prefs') throw new DOMException('Storage blocked', 'SecurityError');
+      return set.call(this, key, value);
+    };
+  }));
+
   test('chromium: abnormal theme storage and short mobile viewport', { timeout: 30000 }, () => open('chromium', async (page) => {
     const trigger = page.locator('#btnSeedMobile');
     await trigger.press('Enter');

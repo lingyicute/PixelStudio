@@ -1833,21 +1833,30 @@
     }
   </style>
   <script>
-    // Apply the saved (or system) theme before the first paint. The app script at the end of <body> only runs once
-    // the whole page is parsed, so dark-mode users first saw the light theme, which then faded to dark on every load.
-    // Mirrors applyTheme / applySeed / syncThemeColorMeta in bindEvents (same "pixelstudio.prefs" storage key).
-    (() => {
-      let prefs = {};
-      try { prefs = JSON.parse(localStorage.getItem("pixelstudio.prefs") || "{}") || {}; } catch { /* private mode */ }
+    // Apply validated preferences before first paint and reuse them even when storage is unavailable.
+    const pixelStudioPrefs = (() => {
+      const key = "pixelstudio.prefs";
+      const seeds = new Set(["teal", "violet", "azure", "forest", "terracotta"]);
+      const values = {};
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || "{}");
+        if (typeof saved?.dark === "boolean") values.dark = saved.dark;
+        if (seeds.has(saved?.seed)) values.seed = saved.seed;
+      } catch { /* invalid or unavailable storage */ }
       const root = document.documentElement;
-      const dark = typeof prefs.dark === "boolean"
-        ? prefs.dark
-        : Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      const dark = values.dark ?? Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches);
       if (dark) root.setAttribute("data-theme", "dark");
-      if (/^(violet|azure|forest|terracotta)$/.test(prefs.seed)) root.setAttribute("data-seed", prefs.seed);
+      if (values.seed && values.seed !== "teal") root.setAttribute("data-seed", values.seed);
       const surface = getComputedStyle(root).getPropertyValue("--md-sys-color-surface").trim();
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta && surface) meta.setAttribute("content", surface);
+      return {
+        values,
+        save(patch) {
+          Object.assign(values, patch);
+          try { localStorage.setItem(key, JSON.stringify(values)); } catch { /* keep the session preference */ }
+        }
+      };
     })();
   </script>
 </head>
@@ -5150,19 +5159,13 @@
          ====================================================================== */
       function bindEvents() {
         // 1. Theme & Material You Seed Switcher (persisted; follows system until the user overrides)
-        const PREF_KEY = "pixelstudio.prefs";
-        const readPrefs = () => {
-          try { return JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); } catch { return {}; }
-        };
-        const writePrefs = (patch) => {
-          try { localStorage.setItem(PREF_KEY, JSON.stringify({ ...readPrefs(), ...patch })); } catch { /* private mode */ }
-        };
-        const SEED_HEX = { teal: "#006A67", violet: "#6750A4", azure: "#1B60A5", forest: "#296A47", terracotta: "#984716" };
-        const darkMql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+        const { values: prefs, save: writePrefs } = pixelStudioPrefs;
+        const darkMql = window.matchMedia?.("(prefers-color-scheme: dark)");
 
         function applyTheme(isDark) {
           if (isDark) document.documentElement.setAttribute("data-theme", "dark");
           else document.documentElement.removeAttribute("data-theme");
+          $("btnThemeToggle").setAttribute("aria-pressed", String(isDark));
           syncThemeColorMeta();
         }
 
@@ -5182,19 +5185,16 @@
           const meta = document.querySelector('meta[name="theme-color"]');
           if (!meta) return;
           const surface = getComputedStyle(document.documentElement).getPropertyValue("--md-sys-color-surface").trim();
-          meta.setAttribute("content", surface || SEED_HEX.teal);
+          meta.setAttribute("content", surface || "#006A67");
         }
 
-        const prefs = readPrefs();
-        applyTheme(typeof prefs.dark === "boolean" ? prefs.dark : Boolean(darkMql && darkMql.matches));
-        applySeed(prefs.seed && SEED_HEX[prefs.seed] ? prefs.seed : "teal");
+        applyTheme(prefs.dark ?? Boolean(darkMql?.matches));
+        applySeed(prefs.seed || "teal");
 
-        // React to OS theme changes while the user has not chosen manually
-        if (darkMql && typeof darkMql.addEventListener === "function") {
-          darkMql.addEventListener("change", (e) => {
-            if (typeof readPrefs().dark !== "boolean") applyTheme(e.matches);
-          });
-        }
+        // React to OS theme changes while the user has not chosen manually.
+        const updateSystemTheme = (e) => { if (typeof prefs.dark !== "boolean") applyTheme(e.matches); };
+        if (darkMql?.addEventListener) darkMql.addEventListener("change", updateSystemTheme);
+        else darkMql?.addListener?.(updateSystemTheme);
 
         $("btnThemeToggle").addEventListener("click", () => {
           const isDark = document.documentElement.getAttribute("data-theme") === "dark";
