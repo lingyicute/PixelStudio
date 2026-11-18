@@ -2189,7 +2189,8 @@
                   <span>按百分比缩放</span>
                   <span class="slider-value-pill" id="scalePercentBadge">100%</span>
                 </div>
-                <input type="range" class="m3-slider" id="sliderScalePercent" aria-label="按百分比缩放" min="10" max="200" step="1" value="100" />
+                <input type="range" class="m3-slider" id="sliderScalePercent" aria-label="按百分比缩放" aria-describedby="scaleLimitNote" min="10" max="200" step="1" value="100" />
+                <p id="scaleLimitNote" class="card-subtitle" hidden></p>
               </div>
 
               <!-- Quick Scale Presets -->
@@ -3573,6 +3574,7 @@
         iconLockOpen: $("iconLockOpen"),
         sliderScalePercent: $("sliderScalePercent"),
         scalePercentBadge: $("scalePercentBadge"),
+        scaleLimitNote: $("scaleLimitNote"),
         selResample: $("selResample"),
 
         // EXIF inputs
@@ -4220,37 +4222,34 @@
       function syncResizeInputs(skipInput = null) {
         if (skipInput !== els.inpResizeW) els.inpResizeW.value = state.targetW;
         if (skipInput !== els.inpResizeH) els.inpResizeH.value = state.targetH;
-        const pct = state.resizeScale * state.resizeLimit * 100;
-        const label = (n) => n < 1 ? "<1%" : `${Math.round(n)}%`;
-        els.sliderScalePercent.value = Math.round(pct);
-        const sy = state.resizeScaleY;
-        els.scalePercentBadge.textContent = sy === null || sy === state.resizeScale
-          ? label(pct) : `${label(pct)} × ${label(sy * state.resizeLimit * 100)}`;
+        const sx = state.resizeScale;
+        const sy = state.resizeScaleY ?? sx;
+        const limit = state.resizeLimit;
+        const percentage = (scale) => scale < 0.01 ? "<1%" : `${Math.round(scale * 100)}%`;
+        const describeScale = (ratio) => sx === sy ? percentage(sx * ratio) : `${percentage(sx * ratio)} × ${percentage(sy * ratio)}`;
+        const requested = Math.round(sx * 100);
+        // Use the requested value so keyboard steps don't get forced back to the same cap.
+        els.sliderScalePercent.value = requested;
+        els.sliderScalePercent.setAttribute("aria-valuetext", `${els.sliderScalePercent.value}%`);
+        els.scalePercentBadge.textContent = describeScale(limit);
+        let note = "";
+        if (limit < 1) note = `请求 ${describeScale(1)}；因画布上限，实际采用 ${describeScale(limit)}。`;
+        else if (requested < Number(els.sliderScalePercent.min) || requested > Number(els.sliderScalePercent.max)) {
+          note = "当前缩放超出滑块的 10%–200% 范围；可继续手动调整目标尺寸。";
+        }
+        els.scaleLimitNote.hidden = !note;
+        els.scaleLimitNote.textContent = note;
         syncResizePresetChips();
       }
 
-      // Highlight the preset chip that matches the current scale / width (if any)
+      // Match the request, not coincidentally identical rounded sizes on tiny selections.
       function syncResizePresetChips() {
-        const cw = Math.max(1, Math.round(state.cropW));
-        const ch = Math.max(1, Math.round(state.cropH));
-        const tw = Math.round(state.targetW);
-        const th = Math.round(state.targetH);
-        const scaleX = state.targetW / cw;
-        const scaleY = state.targetH / ch;
-        document.querySelectorAll("#resizePresetChips .m3-chip").forEach((c) => {
-          let match = false;
-          if (c.dataset.scale) {
-            const rawS = parseFloat(c.dataset.scale);
-            const expectedW = Math.max(1, Math.round(cw * rawS));
-            const expectedH = Math.max(1, Math.round(ch * rawS));
-            match = (Math.abs(rawS - scaleX) < 0.005 && Math.abs(rawS - scaleY) < 0.005) ||
-              (tw === expectedW && th === expectedH);
-          } else if (c.dataset.maxw) {
-            const mw = parseInt(c.dataset.maxw, 10);
-            const expectedH = Math.max(1, Math.round(ch * (mw / cw)));
-            match = tw === mw && th === expectedH;
-          }
-          c.classList.toggle("active", match);
+        const sx = state.resizeScale;
+        const sy = state.resizeScaleY ?? sx;
+        const cropW = Math.max(1, state.cropW);
+        document.querySelectorAll("#resizePresetChips .m3-chip").forEach((chip) => {
+          const scale = chip.dataset.scale ? Number(chip.dataset.scale) : Number(chip.dataset.maxw) / cropW;
+          chip.classList.toggle("active", Math.abs(scale - sx) < 1e-9 && Math.abs(scale - sy) < 1e-9);
         });
       }
 

@@ -166,6 +166,28 @@ for (const engine of engines) {
 }
 
 if (engines.includes('chromium')) {
+  test('chromium: a capped resize keeps the requested slider value', { timeout: 30000 }, () => open('chromium', async (page) => {
+    await page.locator('#fileInput').setInputFiles(await imageFixture(page, 'panorama.png', 11000, 1, ['red']));
+    await ready(page, '11000×1 · PNG');
+    await on(page, 'resize');
+    const slider = page.locator('#sliderScalePercent');
+    await slider.press('End');
+    await ready(page, '16383×1 · PNG');
+    assert.equal(await slider.inputValue(), '200');
+    assert.match(await page.locator('#scaleLimitNote').textContent(), /200%.*149%/);
+    await slider.press('ArrowLeft');
+    assert.equal(await slider.inputValue(), '199');
+    await on(page, 'crop');
+    await type(page, '#inpCropW', 8000);
+    await ready(page, '15920×2 · PNG');
+    assert.equal(await page.locator('#scaleLimitNote').isHidden(), true);
+    await type(page, '#inpCropW', 1);
+    await on(page, 'resize');
+    await click(page, '[data-scale="0.5"]');
+    assert.equal(await slider.inputValue(), '50');
+    assert.equal(await page.locator('#resizePresetChips .active').count(), 1);
+  }));
+
   test('chromium: detected file format and unknown input preserve transparency', { timeout: 30000 }, () => open('chromium', async (page) => {
     const png = await imageFixture(page, 'mislabeled.jpg', 2, 1, ['red', null]);
     await page.locator('#fileInput').setInputFiles({ ...png, mimeType: 'image/jpeg' });
