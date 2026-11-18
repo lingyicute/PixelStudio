@@ -293,6 +293,14 @@ if (engines.includes('chromium')) {
     const trigger = page.locator('#btnSeedMobile');
     await trigger.press('Enter');
     assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
+    const focused = () => page.evaluate(() => document.activeElement.dataset.seed);
+    assert.equal(await focused(), 'teal');
+    await page.keyboard.press('Tab');
+    assert.equal(await focused(), 'violet');
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('html').getAttribute('data-seed'), 'violet');
+    assert.equal(await trigger.evaluate((el) => document.activeElement === el), true);
+    await trigger.press('Enter');
     await page.keyboard.press('Escape');
     assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
     assert.equal(await trigger.evaluate((el) => document.activeElement === el), true);
