@@ -163,6 +163,17 @@ test('GPS uses explicit valid hemispheres and well-formed DMS', async () => {
   assert.equal((await parse(png(pngChunk('eXIf', zero)))).gpsLat, '0');
 });
 
+test('TIFF text reads only a bounded, complete field', async () => {
+  const long = Buffer.alloc(40000, 65);
+  assert.equal(exif._readAscii(new DataView(arrayBuffer(long)), 0, long.length), '');
+  Buffer.from('像素\0').copy(long);
+  assert.equal(exif._readAscii(new DataView(arrayBuffer(long)), 0, long.length), '像素');
+  const metadata = { artist: '林', description: '像素🙂' };
+  const result = await parse(png(pngChunk('eXIf', exif.buildTiffBuffer(metadata))));
+  assert.equal(result.artist, metadata.artist);
+  assert.equal(result.description, metadata.description);
+});
+
 test('DateTimeDigitized outranks modification time if DateTimeOriginal is absent', async () => {
   const tiff = Buffer.from(exif.buildTiffBuffer({ dateTime: '2021:03:04 05:06:07' }));
   const sub = ifdPointer(tiff, 8, 0x8769);

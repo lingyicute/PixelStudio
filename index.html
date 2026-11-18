@@ -2490,7 +2490,7 @@
          MODULE 1: BINARY EXIF PARSER & SERIALIZER (ZERO DEPENDENCIES)
          Reads & writes authentic TIFF/EXIF APP1 metadata in JPEG & PNG
          ====================================================================== */
-      const MAX_PNG_TEXT_BYTES = 32 * 1024;
+      const MAX_METADATA_TEXT_BYTES = 32 * 1024;
       const PNG_TEXT_FIELDS = new Map([
         ["Author", "artist"], ["Artist", "artist"], ["Software", "software"], ["Copyright", "copyright"],
         ["Description", "description"], ["Comment", "description"], ["Creation Time", "dateTime"]
@@ -2577,7 +2577,7 @@
               const prefix = length >= 6 && view.getUint32(dataStart) === 0x45786966 && view.getUint16(dataStart + 4) === 0 ? 6 : 0;
               this._parseTiff(view, dataStart + prefix, length - prefix, result);
             } else if ((type === 0x74455874 || type === 0x7a545874 || type === 0x69545874) &&
-                       length <= MAX_PNG_TEXT_BYTES && textEntries.length < 64) { // tEXt, zTXt, iTXt
+                       length <= MAX_METADATA_TEXT_BYTES && textEntries.length < 64) { // tEXt, zTXt, iTXt
               const bytes = slice(dataStart, end);
               const separator = bytes.subarray(0, 80).indexOf(0); // PNG keywords are 1–79 bytes.
               const field = separator > 0 && PNG_TEXT_FIELDS.get(this._decodeLatin1(bytes.subarray(0, separator)));
@@ -2630,7 +2630,7 @@
 
         async _inflatePngText(bytes) {
           const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate")).getReader();
-          const output = new Uint8Array(MAX_PNG_TEXT_BYTES);
+          const output = new Uint8Array(MAX_METADATA_TEXT_BYTES);
           let length = 0;
           try {
             while (true) {
@@ -2809,26 +2809,17 @@
         },
 
         _readAscii(view, offset, len) {
-          const end = Math.min(view.byteLength, offset + len);
-          const bytes = new Uint8Array(Math.max(0, end - offset));
-          let n = 0;
-          for (let i = offset; i < end; i++) {
-            const b = view.getUint8(i);
-            if (b === 0) break;
-            bytes[n++] = b;
-          }
-          return this._decodeText(bytes.subarray(0, n)).trim();
-        },
-
-        // Prefer UTF-8, but many cameras / older tools write Latin-1; a non-fatal UTF-8 decode would
-        // silently turn those bytes into U+FFFD, so fall back to a byte-per-char decode instead.
-        _decodeText(bytes) {
+          const length = Math.min(view.byteLength - offset, len, MAX_METADATA_TEXT_BYTES);
+          const bytes = new Uint8Array(view.buffer, view.byteOffset + offset, length);
+          const end = bytes.indexOf(0);
+          // Don't allocate based on an arbitrary TIFF entry count, or decode a partial character.
+          if (end < 0 && length !== len) return "";
+          const text = bytes.subarray(0, end < 0 ? length : end);
           try {
-            return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+            // Some cameras use UTF-8 in EXIF ASCII fields; older ones use Latin-1.
+            return new TextDecoder("utf-8", { fatal: true }).decode(text).trim();
           } catch {
-            let s = "";
-            for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-            return s;
+            return this._decodeLatin1(text).trim();
           }
         },
 
