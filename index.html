@@ -2459,7 +2459,14 @@
          Reads & writes authentic TIFF/EXIF APP1 metadata in JPEG & PNG
          ====================================================================== */
       const ExifEngine = {
-        // Parse EXIF from ArrayBuffer (supports JPEG APP1 and PNG eXIf/tEXt)
+        detectFormat(view) {
+          if (view.byteLength >= 2 && view.getUint16(0) === 0xffd8) return "image/jpeg";
+          if (view.byteLength >= 8 && view.getUint32(0) === 0x89504e47 && view.getUint32(4) === 0x0d0a1a0a) return "image/png";
+          if (view.byteLength >= 12 && view.getUint32(0) === 0x52494646 && view.getUint32(8) === 0x57454250) return "image/webp";
+          return "";
+        },
+
+        // Parse metadata from an ArrayBuffer (JPEG, PNG or WebP).
         parse(arrayBuffer) {
           const view = new DataView(arrayBuffer);
           const result = {
@@ -2479,10 +2486,10 @@
             gpsLng: ""
           };
 
-          if (view.byteLength < 12) return result;
+          const format = this.detectFormat(view);
 
           // Check JPEG SOI: 0xFFD8
-          if (view.getUint16(0, false) === 0xffd8) {
+          if (format === "image/jpeg") {
             let offset = 2;
             while (offset + 4 <= view.byteLength) {
               if (view.getUint8(offset) !== 0xff) break;
@@ -2507,7 +2514,7 @@
             }
           }
           // Check PNG Signature: 89 50 4E 47 0D 0A 1A 0A
-          else if (view.getUint32(0, false) === 0x89504e47 && view.getUint32(4, false) === 0x0d0a1a0a) {
+          else if (format === "image/png") {
             let offset = 8;
             const textMeta = [];
             while (offset + 12 <= view.byteLength) {
@@ -2547,7 +2554,7 @@
             for (const [key, val] of textMeta) this._applyTextMeta(key, val, result);
           }
           // Check WebP: RIFF....WEBP, EXIF chunk
-          else if (view.byteLength >= 20 && view.getUint32(0, false) === 0x52494646 && view.getUint32(8, false) === 0x57454250) {
+          else if (format === "image/webp") {
             let offset = 12;
             while (offset + 8 <= view.byteLength) {
               const type = view.getUint32(offset, false);
