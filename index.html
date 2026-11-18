@@ -4580,6 +4580,18 @@
         let cur = src;
         let cx = sx, cy = sy, cw = sw, ch = sh;
         try {
+          // drawImage filters against the edges of the entire source bitmap, not the source rect.
+          // Isolate cropped pixels at native size before smoothing, so an adjacent pixel cannot bleed in.
+          if (quality !== "pixelated" && (sw !== dw || sh !== dh) &&
+              (sx || sy || sw !== (src.naturalWidth || src.width) || sh !== (src.naturalHeight || src.height))) {
+            cur = document.createElement("canvas");
+            sizeCanvas(cur, sw, sh);
+            const cropCtx = cur.getContext("2d");
+            if (!cropCtx) throw new Error("无法分配裁剪画布，请降低图片尺寸");
+            cropCtx.imageSmoothingEnabled = false;
+            cropCtx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
+            cx = cy = 0;
+          }
           if (quality === "high") {
             while (cw >= dw * 2 || ch >= dh * 2) {
               let nw = cw >= dw * 2 ? Math.max(dw, Math.ceil(cw / 2)) : cw;
