@@ -2165,7 +2165,7 @@
                   <span>按百分比缩放</span>
                   <span class="slider-value-pill" id="scalePercentBadge">100%</span>
                 </div>
-                <input type="range" class="m3-slider" id="sliderScalePercent" aria-label="按百分比缩放" min="10" max="200" step="5" value="100" />
+                <input type="range" class="m3-slider" id="sliderScalePercent" aria-label="按百分比缩放" min="10" max="200" step="1" value="100" />
               </div>
 
               <!-- Quick Scale Presets -->
@@ -3415,8 +3415,9 @@
         targetH: 0,
         lockAspect: true,
         resampleQuality: "high",
-        resizeScale: 1, // Exact output/crop scale factor (slider is only a rounded view of it)
-        resizeScaleY: null, // Only set when the aspect lock is off and H was scaled independently of W
+        resizeScale: 1, // Requested scale, retained when a larger crop hits the canvas limits
+        resizeScaleY: null, // An explicitly stretched height when the aspect lock is off
+        resizeLimit: 1, // Multiplier actually applied to keep the rounded dimensions encodable
 
         // EXIF
         stripExif: false,
@@ -3992,8 +3993,7 @@
           state.targetH = rotH;
           state.resizeScale = 1;
           state.resizeScaleY = null;
-          els.sliderScalePercent.value = 100;
-          els.scalePercentBadge.textContent = "100%";
+          state.resizeLimit = 1;
         } else {
           // Clamp existing crop within new rotated bounds
           state.cropW = Math.min(state.cropW, rotW);
@@ -4063,67 +4063,51 @@
         els.resizeSourceInfo.textContent = `当前裁剪区域: ${Math.round(state.cropW)} × ${Math.round(state.cropH)} px`;
       }
 
-      // Pixel budget with a little headroom, because target sizes are rounded to whole pixels after scaling
-      const SAFE_CANVAS_PIXELS = MAX_CANVAS_PIXELS * 0.99;
-      // Largest uniform output scale of a cw x ch crop. It honours the per-edge canvas limit AND the pixel
-      // budget: otherwise the slider / presets offered sizes that the encoder always rejected at export time
-      function maxUniformScale(cw, ch) {
-        const bySide = Math.min(MAX_CANVAS_SIDE / cw, MAX_CANVAS_SIDE / ch);
-        let byBudget = Math.sqrt(SAFE_CANVAS_PIXELS / (cw * ch));
-        // The 1% headroom must not push a crop that already fits below its native size: 1:1 is exact
-        // (no rounding), so a crop within the budget can always be exported at 100%
-        if (cw * ch <= MAX_CANVAS_PIXELS) byBudget = Math.max(byBudget, 1);
-        return Math.min(bySide, byBudget);
+      function fitResizeScales(cw, ch, sx, sy) {
+        const sizeAt = (k) => ({
+          w: Math.max(1, Math.round(cw * sx * k)),
+          h: Math.max(1, Math.round(ch * sy * k))
+        });
+        const cap = Math.min(1, MAX_CANVAS_SIDE / (cw * sx), MAX_CANVAS_SIDE / (ch * sy));
+        const fits = ({ w, h }) => w * h <= MAX_CANVAS_PIXELS && w <= MAX_CANVAS_SIDE && h <= MAX_CANVAS_SIDE;
+        const size = sizeAt(cap);
+        if (fits(size)) return { ...size, limit: cap };
+
+        // Check the actual integer dimensions, not a continuous area estimate that can round up past the budget.
+        let lo = 0, hi = cap;
+        for (let i = 0; i < 32; i++) {
+          const mid = (lo + hi) / 2;
+          if (fits(sizeAt(mid))) lo = mid;
+          else hi = mid;
+        }
+        return { ...sizeAt(lo), limit: lo };
       }
 
-      // keepStretch: the crop changed but the user's scale did not, so an unlocked (non-uniform)
-      // width/height ratio must survive instead of snapping back to the crop's own aspect.
-      function syncResizeFromCrop(scaleFactor = null, keepStretch = false, preserveSlider = false) {
-        const cw = Math.max(1, Math.round(state.cropW));
-        const ch = Math.max(1, Math.round(state.cropH));
-        if (scaleFactor !== null) {
-          let sx = scaleFactor;
-          let sy = keepStretch && !state.lockAspect && state.resizeScaleY ? state.resizeScaleY : scaleFactor;
-          if (sy === sx) state.resizeScaleY = null;
-          if (state.lockAspect || sy === sx) {
-            const maxUniform = maxUniformScale(cw, ch);
-            if (sx > maxUniform) sx = sy = maxUniform;
-          } else {
-            sx = Math.min(sx, MAX_CANVAS_SIDE / cw);
-            sy = Math.min(sy, MAX_CANVAS_SIDE / ch);
-            const area = sx * sy * cw * ch;
-            if (area > SAFE_CANVAS_PIXELS) {
-              const k = Math.sqrt(SAFE_CANVAS_PIXELS / area);
-              sx *= k;
-              sy *= k;
-            }
-            state.resizeScaleY = sy;
-          }
-          state.resizeScale = sx;
-          state.targetW = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(cw * sx)));
-          state.targetH = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(ch * sy)));
-        } else if (state.lockAspect) {
-          const aspect = cw / ch;
-          let h = Math.max(1, Math.round(state.targetW / aspect));
-          if (h > MAX_CANVAS_SIDE) {
-            h = MAX_CANVAS_SIDE;
-            state.targetW = Math.max(1, Math.round(h * aspect));
-          }
-          state.targetH = h;
-        }
-        syncResizeInputs(preserveSlider);
+      function syncResizeFromCrop(skipInput = null) {
+        const sx = state.resizeScale;
+        const sy = state.resizeScaleY ?? sx;
+        const { w, h, limit } = fitResizeScales(state.cropW, state.cropH, sx, sy);
+        state.targetW = w;
+        state.targetH = h;
+        state.resizeLimit = limit;
+        syncResizeInputs(skipInput);
       }
 
-      function syncResizeInputs(preserveSlider = false) {
-        els.inpResizeW.value = Math.round(state.targetW);
-        els.inpResizeH.value = Math.round(state.targetH);
-        const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
-        // Only skip rewriting the slider while the slider itself is driving the resize (avoiding jitter
-        // on small crops); checking activeElement fails on Safari where button clicks do not move focus
-        if (!preserveSlider) {
-          els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
-        }
-        els.scalePercentBadge.textContent = `${pct}%`;
+      function setUniformResize(scale, skipInput = null) {
+        state.resizeScale = scale;
+        state.resizeScaleY = null;
+        syncResizeFromCrop(skipInput);
+      }
+
+      function syncResizeInputs(skipInput = null) {
+        if (skipInput !== els.inpResizeW) els.inpResizeW.value = state.targetW;
+        if (skipInput !== els.inpResizeH) els.inpResizeH.value = state.targetH;
+        const pct = state.resizeScale * state.resizeLimit * 100;
+        const label = (n) => n < 1 ? "<1%" : `${Math.round(n)}%`;
+        els.sliderScalePercent.value = Math.round(pct);
+        const sy = state.resizeScaleY;
+        els.scalePercentBadge.textContent = sy === null || sy === state.resizeScale
+          ? label(pct) : `${label(pct)} × ${label(sy * state.resizeLimit * 100)}`;
         syncResizePresetChips();
       }
 
@@ -4284,7 +4268,7 @@
         state.cropX = x; state.cropY = y; state.cropW = w; state.cropH = h;
         if (sizeChanged) {
           syncCropInputs();
-          syncResizeFromCrop(state.resizeScale, true);
+          syncResizeFromCrop();
         } else {
           els.inpCropX.value = x;
           els.inpCropY.value = y;
@@ -4417,7 +4401,7 @@
 
         if (sizeChanged) {
           syncCropInputs();
-          syncResizeFromCrop(state.resizeScale, true);
+          syncResizeFromCrop();
         } else {
           els.inpCropX.value = nextX;
           els.inpCropY.value = nextY;
@@ -4470,8 +4454,7 @@
         state.cropY = Math.round((state.rotH - state.cropH) / 2);
 
         syncCropInputs();
-        const currentScale = state.resizeScale;
-        syncResizeFromCrop(currentScale, true);
+        syncResizeFromCrop();
         if (state.compareMode) renderCompareView();
         else updateCropBoxVisual();
         scheduleOutputEncode();
@@ -5416,8 +5399,7 @@
           } else {
             syncCropInputs(target);
           }
-          const currentScale = state.resizeScale;
-          syncResizeFromCrop(currentScale, true);
+          syncResizeFromCrop();
           if (state.compareMode) renderCompareView();
           else updateCropBoxVisual();
           scheduleOutputEncode();
@@ -5459,7 +5441,7 @@
             setRatioChipActive("free");
           }
           syncCropInputs();
-          syncResizeFromCrop(state.resizeScale, true);
+          syncResizeFromCrop();
           if (state.compareMode) renderCompareView();
           else updateCropBoxVisual();
           scheduleOutputEncode();
@@ -5474,24 +5456,11 @@
         // 6. Resize Controls
         els.btnLockAspect.addEventListener("click", () => {
           state.lockAspect = !state.lockAspect;
-          if (state.lockAspect) {
-            state.resizeScaleY = null;
-            // Locking again must bring a stretched output back to the crop's own aspect ratio
-            if (state.hasImage && state.cropW > 0 && state.cropH > 0) {
-              const cw = Math.max(1, Math.round(state.cropW));
-              const ch = Math.max(1, Math.round(state.cropH));
-              const scale = Math.min(Math.round(state.targetW) / cw, maxUniformScale(cw, ch));
-              const w = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(cw * scale)));
-              const h = Math.max(1, Math.min(MAX_CANVAS_SIDE, Math.round(ch * scale)));
-              if (h !== Math.round(state.targetH) || w !== Math.round(state.targetW)) {
-                state.targetW = w;
-                state.targetH = h;
-                state.resizeScale = scale;
-                syncResizeInputs();
-                if (state.compareMode) renderCompareView();
-                scheduleOutputEncode();
-              }
-            }
+          if (state.lockAspect && state.hasImage && state.resizeScaleY !== null) {
+            // Re-lock from the current width, not from the independently edited height.
+            setUniformResize(state.targetW / state.cropW);
+            if (state.compareMode) renderCompareView();
+            scheduleOutputEncode();
           }
           els.btnLockAspect.classList.toggle("active", state.lockAspect);
           els.btnLockAspect.setAttribute("aria-pressed", String(state.lockAspect));
@@ -5499,69 +5468,37 @@
           els.iconLockOpen.style.display = state.lockAspect ? "none" : "block";
         });
 
-        const afterManualResize = () => {
-          state.resizeScale = state.targetW / Math.max(1, state.cropW);
-          state.resizeScaleY = state.lockAspect ? null : state.targetH / Math.max(1, state.cropH);
-          const pct = Math.round((state.targetW / Math.max(1, state.cropW)) * 100);
-          els.sliderScalePercent.value = Math.max(10, Math.min(200, pct));
-          els.scalePercentBadge.textContent = `${pct}%`;
-          syncResizePresetChips();
+        const applyManualResize = (input) => {
+          if (!state.hasImage) return;
+          const raw = parseNumericInt(input.value);
+          if (!Number.isFinite(raw)) return; // Field temporarily empty while typing
+          const byWidth = input === els.inpResizeW;
+          const requested = Math.max(1, Math.min(MAX_CANVAS_SIDE, raw));
+          if (state.lockAspect) {
+            setUniformResize(requested / (byWidth ? state.cropW : state.cropH), input);
+          } else {
+            // Keep the other axis as entered; limit only the one the user is editing.
+            const other = byWidth ? state.targetH : state.targetW;
+            const effective = Math.min(requested, Math.floor(MAX_CANVAS_PIXELS / other));
+            if (byWidth) state.targetW = effective;
+            else state.targetH = effective;
+            state.resizeScale = state.targetW / state.cropW;
+            state.resizeScaleY = state.targetH / state.cropH;
+            state.resizeLimit = 1;
+            syncResizeInputs(input);
+          }
           if (state.compareMode) renderCompareView();
           scheduleOutputEncode();
         };
 
-        els.inpResizeW.addEventListener("input", () => {
-          if (!state.hasImage) return;
-          const raw = parseNumericInt(els.inpResizeW.value);
-          if (!Number.isFinite(raw)) return; // Field temporarily empty while typing
-          let w = Math.max(1, Math.min(MAX_CANVAS_SIDE, raw));
-          if (state.lockAspect && state.cropW > 0 && state.cropH > 0) {
-            let h = Math.max(1, Math.round(w * (state.cropH / state.cropW)));
-            if (h > MAX_CANVAS_SIDE) {
-              h = MAX_CANVAS_SIDE;
-              w = Math.max(1, Math.round(h * (state.cropW / state.cropH)));
-            }
-            state.targetH = h;
-            els.inpResizeH.value = h;
-          }
-          state.targetW = w;
-          afterManualResize();
-        });
-
-        els.inpResizeH.addEventListener("input", () => {
-          if (!state.hasImage) return;
-          const raw = parseNumericInt(els.inpResizeH.value);
-          if (!Number.isFinite(raw)) return;
-          let h = Math.max(1, Math.min(MAX_CANVAS_SIDE, raw));
-          if (state.lockAspect && state.cropH > 0 && state.cropW > 0) {
-            let w = Math.max(1, Math.round(h * (state.cropW / state.cropH)));
-            if (w > MAX_CANVAS_SIDE) {
-              w = MAX_CANVAS_SIDE;
-              h = Math.max(1, Math.round(w * (state.cropH / state.cropW)));
-            }
-            state.targetW = w;
-            els.inpResizeW.value = w;
-          }
-          state.targetH = h;
-          afterManualResize();
-        });
-
-        // Normalize out-of-range / empty values once editing is finished
         [els.inpResizeW, els.inpResizeH].forEach((inp) => {
-          inp.addEventListener("change", () => {
-            if (!state.hasImage) return;
-            els.inpResizeW.value = Math.round(state.targetW);
-            els.inpResizeH.value = Math.round(state.targetH);
-          });
+          inp.addEventListener("input", () => applyManualResize(inp));
+          inp.addEventListener("change", () => { if (state.hasImage) syncResizeInputs(); });
         });
 
         els.sliderScalePercent.addEventListener("input", () => {
           if (!state.hasImage) return;
-          const pct = parseInt(els.sliderScalePercent.value, 10) || 100;
-          syncResizeFromCrop(pct / 100, false, true); // also refreshes the badge with the scale that was really applied
-          // A size limit can cap the scale below the thumb: move the thumb back to the applied value
-          const applied = Math.round(state.resizeScale * 100);
-          if (applied < pct) els.sliderScalePercent.value = applied;
+          setUniformResize(Number(els.sliderScalePercent.value) / 100);
           if (state.compareMode) renderCompareView();
           scheduleOutputEncode();
         });
@@ -5573,11 +5510,11 @@
             chip.classList.add("active");
             if (chip.dataset.scale) {
               const s = parseFloat(chip.dataset.scale);
-              syncResizeFromCrop(s);
+              setUniformResize(s);
             } else if (chip.dataset.maxw) {
               const targetW = parseInt(chip.dataset.maxw, 10);
               const s = targetW / Math.max(1, state.cropW);
-              syncResizeFromCrop(s);
+              setUniformResize(s);
             }
             if (state.compareMode) renderCompareView();
             scheduleOutputEncode();
@@ -5586,7 +5523,7 @@
 
         $("btnResetResize").addEventListener("click", () => {
           if (!state.hasImage) return;
-          syncResizeFromCrop(1);
+          setUniformResize(1);
           if (state.compareMode) renderCompareView();
           scheduleOutputEncode();
         });
