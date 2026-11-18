@@ -3836,6 +3836,8 @@
         els.iconLockClosed.style.display = "block";
         els.iconLockOpen.style.display = "none";
         els.estimatedSizeLabel.textContent = "-- KB";
+        // The previous picture's spec (or the "no image" placeholder) must not linger while the first encode runs
+        els.exportSpecSummary.textContent = "--";
         els.sizeDeltaPill.textContent = "等待编码";
         els.sizeDeltaPill.classList.remove("increase");
 
@@ -5722,6 +5724,9 @@
             btn.classList.add("active");
             const wasBmp = state.outputFormat === "image/bmp";
             state.outputFormat = btn.dataset.format;
+            // Until a picture is opened the footer only names the target format: keep it in step with the choice
+            // (sourceImg, not hasImage: the latter is cleared on purpose while a new image picks its default format)
+            if (!state.sourceImg) els.exportSpecSummary.textContent = `未加载图片 · ${btn.textContent.trim()}`;
 
             // Show background matte picker for formats without transparency
             const needsMatte = state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp";
