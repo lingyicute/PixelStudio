@@ -166,6 +166,24 @@ for (const engine of engines) {
 }
 
 if (engines.includes('chromium')) {
+  test('chromium: PNG defaults to lossless and BMP does not change a manual preference', { timeout: 30000 }, () => open('chromium', async (page) => {
+    await page.locator('#fileInput').setInputFiles(await imageFixture(page, 'modes.png', 2, 1, ['red', 'green']));
+    await ready(page, 'PNG (无损)');
+    await on(page, 'export');
+    await click(page, '[data-mode="lossy"]');
+    await click(page, '[data-quality="55"]');
+    await ready(page, 'PNG (质量 55/100)');
+    await format(page, 'bmp');
+    assert.equal(await page.locator('[data-mode="lossless"]').isDisabled(), true);
+    await ready(page, 'BMP (未压缩)');
+    await format(page, 'png');
+    await ready(page, 'PNG (质量 55/100)');
+    await click(page, '[data-mode="lossless"]');
+    await format(page, 'bmp');
+    await format(page, 'jpeg');
+    await ready(page, 'JPEG (最高画质（非无损）)');
+  }));
+
   test('chromium: stale compare image and superseded encodes cannot publish', { timeout: 45000 }, () => open('chromium', async (page) => {
     await page.locator('#fileInput').setInputFiles(await imageFixture(page, 'race.png', 3, 1, ['red', 'green', 'blue']));
     await ready(page, '3×1 · PNG');

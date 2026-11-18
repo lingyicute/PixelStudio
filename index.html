@@ -3522,10 +3522,8 @@
         matteColor: "#ffffff",
         compressionMode: "lossy", // 'lossy' | 'lossless'
         compressionQuality: 80,   // Encoder setting, not a promised file-size reduction
-        modeBeforeBmp: null,      // Compression mode to restore when leaving BMP
-        formatTouched: false,     // The user picked an output format themselves
-        modeTouched: false,       // The user picked lossy / lossless themselves
-        autoLosslessForPng: false, // Lossless was switched on automatically for a PNG input (undone when leaving PNG)
+        compressionPreference: null, // Explicit user choice; otherwise use the format default.
+        formatTouched: false,     // The user picked an output format themselves.
 
         // Live Output Cache
         outputBlob: null,
@@ -4025,14 +4023,7 @@
         const byMime = { "image/jpeg": "image/jpeg", "image/png": "image/png", "image/apng": "image/png", "image/webp": webpTarget, "image/avif": avifTarget, "image/gif": "image/png", "image/svg+xml": "image/png", "image/bmp": "image/png", "image/x-icon": "image/png", "image/vnd.microsoft.icon": "image/png" };
         const byExt = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", apng: "image/png", webp: webpTarget, avif: avifTarget, gif: "image/png", svg: "image/png", bmp: "image/png", ico: "image/png", cur: "image/png" };
         const target = byMime[meta.mimeType] || byExt[(ext || "").toLowerCase()] || "image/jpeg";
-        if (target !== state.outputFormat) {
-          const btn = document.querySelector(`#formatSegmented .segmented-btn[data-format="${target}"]`);
-          if (btn) btn.click();
-        }
-        if (target === "image/png" && !state.modeTouched && state.compressionMode !== "lossless") {
-          state.autoLosslessForPng = true;
-          document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
-        }
+        setOutputFormat(target);
       }
 
       /* ======================================================================
@@ -4867,11 +4858,7 @@
           if (requestedFormat === "image/avif") $("btnFormatAvif").style.display = "none";
           if (requestedFormat === "image/webp") $("btnFormatWebp").style.display = "none";
           // Encode again: the PNG fallback must not inherit the JPEG matte or skip PNG quantization.
-          document.querySelector('#formatSegmented .segmented-btn[data-format="image/png"]').click();
-          if (!state.modeTouched && state.compressionMode !== "lossless") {
-            state.autoLosslessForPng = true;
-            document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
-          }
+          setOutputFormat("image/png");
           return;
         }
         rawEncodeCache = { key: pixelKey, blob: rawBlob };
@@ -5152,6 +5139,49 @@
         state.exif.focalLength = els.exifFocal.value;
         state.exif.gpsLat = els.exifGpsLat.value;
         state.exif.gpsLng = els.exifGpsLng.value;
+      }
+
+      function setOutputFormat(format) {
+        state.outputFormat = format;
+        document.querySelectorAll("#formatSegmented .segmented-btn").forEach((button) => {
+          const selected = button.dataset.format === format;
+          button.classList.toggle("active", selected);
+          if (selected && !state.sourceImg) els.exportSpecSummary.textContent = `未加载图片 · ${button.textContent.trim()}`;
+        });
+        els.jpegMatteRow.style.display = format === "image/jpeg" || format === "image/bmp" ? "flex" : "none";
+        syncCompressionMode();
+        const unsupported = format === "image/bmp" || format === "image/avif";
+        els.exifFormatNote.style.display = unsupported ? "flex" : "none";
+        if (unsupported) {
+          const name = format === "image/bmp" ? "BMP" : "AVIF";
+          els.exifFormatNoteText.textContent = `本工具不会向 ${name} 写入 EXIF；如需保存下方修改，请将导出格式改为 JPEG / PNG / WebP。`;
+        }
+        scheduleOutputEncode();
+      }
+
+      function syncCompressionMode() {
+        const format = state.outputFormat;
+        const bmp = format === "image/bmp";
+        const mode = bmp ? "lossless" : (state.compressionPreference ?? (format === "image/png" ? "lossless" : "lossy"));
+        state.compressionMode = mode;
+        document.querySelectorAll("#compressionModeSegmented .segmented-btn").forEach((button) => {
+          button.classList.toggle("active", button.dataset.mode === mode);
+          button.disabled = bmp;
+        });
+        els.lossyControlsBlock.style.display = mode === "lossy" ? "flex" : "none";
+        els.losslessBanner.style.display = mode === "lossless" ? "flex" : "none";
+        if (mode !== "lossless") return;
+        els.losslessBanner.classList.toggle("warning", format !== "image/png" && !bmp);
+        if (bmp) {
+          els.losslessBannerText.textContent = "BMP 以未压缩的 24 位 RGB 保存；透明区域将使用所选背景色填充。";
+        } else if (format === "image/png") {
+          els.losslessBannerText.textContent = "PNG 无损编码：不对当前画布的像素做有损量化。";
+        } else if (format === "image/webp") {
+          els.losslessBannerText.textContent = "向浏览器请求最高画质；输出确为无损 WebP 时才会标注无损。如需保证无损，请选择 PNG。";
+        } else {
+          const name = format === "image/avif" ? "AVIF" : "JPEG";
+          els.losslessBannerText.textContent = `以浏览器的最高画质参数编码 ${name}，不保证无损。如需无损请选择 PNG。`;
+        }
       }
 
       /* ======================================================================
@@ -5779,50 +5809,11 @@
         }, "image/avif");
 
         document.querySelectorAll("#formatSegmented .segmented-btn").forEach((btn) => {
-          btn.addEventListener("click", (ev) => {
-            if (ev.isTrusted) state.formatTouched = true;
-            document.querySelectorAll("#formatSegmented .segmented-btn").forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
-            const wasBmp = state.outputFormat === "image/bmp";
-            state.outputFormat = btn.dataset.format;
-            // Until a picture is opened the footer only names the target format: keep it in step with the choice
-            // (sourceImg, not hasImage: the latter is cleared on purpose while a new image picks its default format)
-            if (!state.sourceImg) els.exportSpecSummary.textContent = `未加载图片 · ${btn.textContent.trim()}`;
-
-            // Show background matte picker for formats without transparency
-            const needsMatte = state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp";
-            els.jpegMatteRow.style.display = needsMatte ? "flex" : "none";
-
-            // BMP is strictly lossless
-            if (state.outputFormat === "image/bmp") {
-              if (!wasBmp) state.modeBeforeBmp = state.compressionMode;
-              setCompressionMode("lossless");
-            } else if (wasBmp && state.modeBeforeBmp) {
-              // Leaving BMP: give the user back the mode that was forced off
-              setCompressionMode(state.modeBeforeBmp);
-              state.modeBeforeBmp = null;
-            }
-            // Lossless was only auto-selected for a PNG input: switching to JPEG / WebP must not keep
-            // exporting 100%-quality (huge) files the user never asked for
-            if (state.autoLosslessForPng && !state.modeTouched && state.outputFormat !== "image/png" && state.outputFormat !== "image/bmp") {
-              state.autoLosslessForPng = false;
-              setCompressionMode("lossy");
-            }
-            updateCompressionBannerText();
-            updateExifFormatNote();
-            scheduleOutputEncode();
+          btn.addEventListener("click", () => {
+            state.formatTouched = true;
+            setOutputFormat(btn.dataset.format);
           });
         });
-
-        // BMP and AVIF exports are written without any metadata: say so instead of dropping edits silently
-        function updateExifFormatNote() {
-          const unsupported = state.outputFormat === "image/bmp" || state.outputFormat === "image/avif";
-          els.exifFormatNote.style.display = unsupported ? "flex" : "none";
-          if (unsupported) {
-            const name = state.outputFormat === "image/bmp" ? "BMP" : "AVIF";
-            els.exifFormatNoteText.textContent = `当前导出格式 ${name} 无法写入 EXIF，下方修改不会出现在导出文件中；请在“格式压缩”中切换为 JPEG / PNG / WebP。`;
-          }
-        }
 
         document.querySelectorAll(".matte-swatch").forEach((sw) => {
           sw.addEventListener("click", () => {
@@ -5841,41 +5832,11 @@
           scheduleOutputEncode();
         });
 
-        function setCompressionMode(mode) {
-          state.compressionMode = mode;
-          document.querySelectorAll("#compressionModeSegmented .segmented-btn").forEach((b) => {
-            b.classList.toggle("active", b.dataset.mode === mode);
-          });
-          els.lossyControlsBlock.style.display = mode === "lossy" ? "flex" : "none";
-          els.losslessBanner.style.display = mode === "lossless" ? "flex" : "none";
-          updateCompressionBannerText();
-        }
-
-        function updateCompressionBannerText() {
-          if (state.compressionMode !== "lossless") return;
-          const format = state.outputFormat;
-          els.losslessBanner.classList.toggle("warning", format !== "image/png" && format !== "image/bmp");
-          if (format === "image/bmp") {
-            els.losslessBannerText.textContent = "BMP 以未压缩的 24 位 RGB 保存；透明区域将使用所选背景色填充。";
-          } else if (format === "image/png") {
-            els.losslessBannerText.textContent = "PNG 无损编码：不对当前画布的像素做有损量化。";
-          } else if (format === "image/webp") {
-            els.losslessBannerText.textContent = "向浏览器请求最高画质；输出确为无损 WebP 时才会标注无损。如需保证无损，请选择 PNG。";
-          } else {
-            const name = format === "image/avif" ? "AVIF" : "JPEG";
-            els.losslessBannerText.textContent = `以浏览器的最高画质参数编码 ${name}，不保证无损。如需无损请选择 PNG。`;
-          }
-        }
-
         document.querySelectorAll("#compressionModeSegmented .segmented-btn").forEach((btn) => {
-          btn.addEventListener("click", (ev) => {
-            if (state.outputFormat === "image/bmp" && btn.dataset.mode === "lossy") {
-              showToast("BMP 格式仅支持无损导出，如需有损压缩请选择 JPEG / WebP");
-              return;
-            }
-            // A rejected click is no manual choice: it must not pin the lossless mode BMP forced on
-            if (ev.isTrusted) state.modeTouched = true;
-            setCompressionMode(btn.dataset.mode);
+          btn.addEventListener("click", () => {
+            if (state.outputFormat === "image/bmp") return;
+            state.compressionPreference = btn.dataset.mode;
+            syncCompressionMode();
             scheduleOutputEncode();
           });
         });
