@@ -3067,7 +3067,7 @@
         // Inject or strip APP1 EXIF segment in a JPEG Uint8Array
         processJpegBytes(jpegBytes, stripExif, meta, dims) {
           if (jpegBytes.length < 4 || jpegBytes[0] !== 0xff || jpegBytes[1] !== 0xd8) {
-            return jpegBytes;
+            throw new Error("无法读取 JPEG 容器");
           }
           // Drop any existing APP1 (0xFFE1) segments (EXIF / XMP) after SOI
           const chunks = [new Uint8Array([0xff, 0xd8])];
@@ -3076,11 +3076,7 @@
           while (pos + 4 <= jpegBytes.length) {
             const m1 = jpegBytes[pos];
             const m2 = jpegBytes[pos + 1];
-            if (m1 !== 0xff) {
-              chunks.push(jpegBytes.subarray(pos));
-              pos = jpegBytes.length;
-              break;
-            }
+            if (m1 !== 0xff) throw new Error("JPEG 段标记无效");
             if (m2 === 0xff) {
               chunks.push(jpegBytes.subarray(pos, pos + 1));
               pos += 1;
@@ -3098,11 +3094,7 @@
             }
             const segLen = (jpegBytes[pos + 2] << 8) | jpegBytes[pos + 3];
             const nextPos = pos + 2 + segLen;
-            if (segLen < 2 || nextPos > jpegBytes.length) {
-              chunks.push(jpegBytes.subarray(pos));
-              pos = jpegBytes.length;
-              break;
-            }
+            if (segLen < 2 || nextPos > jpegBytes.length) throw new Error("JPEG 段长度无效");
             // Skip existing APP1 (0xE1) if we are stripping or replacing EXIF
             if (m2 !== 0xe1) {
               chunks.push(jpegBytes.subarray(pos, nextPos));
@@ -3148,10 +3140,10 @@
 
         // Inject or strip PNG eXIf chunk in a PNG Uint8Array
         injectPngExif(pngBytes, stripExif, meta, dims) {
-          if (pngBytes.length < 33) return pngBytes;
           const view = new DataView(pngBytes.buffer, pngBytes.byteOffset, pngBytes.byteLength);
-          if (view.getUint32(0, false) !== 0x89504e47 || view.getUint32(4, false) !== 0x0d0a1a0a) {
-            return pngBytes;
+          if (pngBytes.length < 33 || this.detectFormat(view) !== "image/png" ||
+              view.getUint32(8) !== 13 || view.getUint32(12) !== 0x49484452) {
+            throw new Error("无法读取 PNG 容器");
           }
           let exifChunk = null;
           if (!stripExif) {
@@ -3170,6 +3162,7 @@
           let pos = 8;
           let removedAny = false;
           let inserted = false;
+          let ended = false;
           while (pos + 12 <= pngBytes.length) {
             const len = view.getUint32(pos, false);
             const type = view.getUint32(pos + 4, false);
@@ -3186,10 +3179,15 @@
               inserted = true;
             }
             pos = nextPos;
-            if (type === 0x49454e44) break; // IEND
+            if (type === 0x49454e44) { // IEND
+              if (len !== 0) throw new Error("PNG 结束块无效");
+              ended = true;
+              break;
+            }
           }
-          if (pos < pngBytes.length) parts.push(pngBytes.subarray(pos));
-          if (stripExif && !removedAny) return pngBytes;
+          if (!ended) throw new Error("PNG 容器不完整");
+          if (!stripExif && pos < pngBytes.length) parts.push(pngBytes.subarray(pos));
+          if (stripExif && !removedAny && pos === pngBytes.length) return pngBytes;
 
           const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
           const out = new Uint8Array(totalLen);
@@ -4808,8 +4806,11 @@
             if (processed !== bytes) finalBlob = new Blob([processed], { type: "image/webp" });
           }
         } catch (err) {
-          console.warn("EXIF 写入失败，已输出不含元数据的文件", err);
-          if (seq === encodeSeq) showToast("EXIF 写入失败，已输出不含元数据的文件：" + ((err && err.message) || err));
+          if (seq !== encodeSeq) return;
+          // Never fall back to unverified bytes when the user explicitly requested privacy stripping.
+          if (state.stripExif) throw new Error("无法确认 EXIF 已清除，未导出图片", { cause: err });
+          console.warn("EXIF 写入失败，已保留编码器原始结果", err);
+          showToast("EXIF 写入失败，导出文件未包含编辑后的元数据：" + (err?.message || err));
         }
 
         if (seq !== encodeSeq) return;
