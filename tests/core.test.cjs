@@ -6,9 +6,11 @@ const { runInNewContext } = require('node:vm');
 const { deflateSync } = require('node:zlib');
 
 // Exercise the deployed inline code without adding exports or dependencies to index.html.
-const source = readFileSync(join(__dirname, '../index.html'), 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const init = 'bindEvents();\n      bindPressedState();';
-assert.ok(source.includes(init));
+const html = readFileSync(join(__dirname, '../index.html'), 'utf8');
+const source = Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g), ([, script]) => script)
+  .find((script) => script.includes(init));
+assert.ok(source, 'The application script must contain the initialization hook');
 const el = { addEventListener() {}, setAttribute() {} };
 const { ExifEngine: exif, CodecHelper: codecs, fitResizeScales, makeDownloadFilename } = runInNewContext(
   source.replace(init, 'return { ExifEngine, CodecHelper, fitResizeScales, makeDownloadFilename };'),
