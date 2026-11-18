@@ -3816,15 +3816,12 @@
         cropDragState = null;
         compareDragPointer = null;
         imageSerial++;
-        clearTimeout(encodeTimer);
-        encodeTimer = null;
-        encodeSeq++;
+        cancelScheduledEncode();
         rawEncodeCache = null;
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
         outputGeometryKey = null;
         outputCompareLabel = "";
-        encodeInFlight = false;
         isEncodePending = false;
         state.hasImage = true;
         state.sourceImg = safe.source;
@@ -4484,64 +4481,72 @@
       let lastCompletedEncodeKey = null;
       let outputGeometryKey = null;
       let outputCompareLabel = "";
-      let encodeInFlight = false;
+      let encodeWorkerActive = false;
+      let encodeQueued = false;
       let isEncodePending = false;
+
+      function cancelScheduledEncode() {
+        clearTimeout(encodeTimer);
+        encodeTimer = null;
+        encodeQueued = false;
+        encodeSeq++;
+      }
 
       // The result on screen no longer matches the settings (e.g. mid crop drag): block export of the
       // stale file now, but leave the actual encode to whoever finishes the gesture
       function invalidateOutput() {
         if (!state.hasImage) return;
-        clearTimeout(encodeTimer);
-        encodeTimer = null;
-        encodeInFlight = false;
+        cancelScheduledEncode();
         lastScheduledEncodeKey = null;
-        encodeSeq++;
         setEncodePending(true);
       }
 
       function scheduleOutputEncode() {
         if (!state.hasImage) return;
         const nextKey = buildEncodeKey();
-        if (nextKey === lastScheduledEncodeKey && (encodeTimer !== null || encodeInFlight || state.outputBlob !== null)) {
-          return;
-        }
-        // Reverting back to the already-encoded state (during debounce, mid-encode, or after a crop drag) needs no re-encode
+        if (nextKey === lastScheduledEncodeKey) return;
+        cancelScheduledEncode();
+        lastScheduledEncodeKey = nextKey;
+
+        // Reverting to the already-encoded state needs no new bitmap or encode.
         if (nextKey === lastCompletedEncodeKey && state.outputBlob !== null) {
-          clearTimeout(encodeTimer);
-          encodeTimer = null;
-          encodeSeq++;
-          encodeInFlight = false;
-          lastScheduledEncodeKey = nextKey;
           setEncodePending(false);
           if (state.compareMode) renderCompareView();
           return;
         }
-        lastScheduledEncodeKey = nextKey;
-        clearTimeout(encodeTimer);
-        // Invalidate any encode still in flight, otherwise its late result would re-enable
-        // the export button with a stale file while the new encode is only pending
-        encodeSeq++;
-        encodeInFlight = false;
         setEncodePending(true);
         encodeTimer = setTimeout(() => {
           encodeTimer = null;
-          try {
-            generateOutputBlob();
-          } catch (err) {
-            // e.g. out-of-memory in getImageData; never leave the UI stuck on "编码中…"
+          encodeQueued = true;
+          void runNextEncode();
+        }, 140);
+      }
+
+      async function runNextEncode() {
+        if (encodeWorkerActive || !encodeQueued) return;
+        encodeWorkerActive = true;
+        encodeQueued = false;
+        const seq = encodeSeq;
+        try {
+          await generateOutputBlob(seq);
+        } catch (err) {
+          if (seq === encodeSeq) {
             console.error(err);
-            showToast("编码失败：" + ((err && err.message) || "内存不足，请降低目标尺寸"));
+            showToast("编码失败：" + (err?.message || "内存不足，请降低目标尺寸"));
             clearOutput();
             setEncodePending(false);
           }
-        }, 140);
+        } finally {
+          encodeWorkerActive = false;
+          // A still-running canvas encode cannot be aborted. Only start the newest settled request
+          // after it releases its backing store, rather than allocating multiple full-size canvases.
+          if (encodeQueued) void runNextEncode();
+        }
       }
 
       // Drop the last encoded result so a failed encode can never export a stale file
       function clearOutput() {
-        clearTimeout(encodeTimer);
-        encodeTimer = null;
-        encodeSeq++;
+        cancelScheduledEncode();
         if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
         state.outputUrl = null;
         state.outputBlob = null;
@@ -4549,7 +4554,6 @@
         lastCompletedEncodeKey = null;
         outputGeometryKey = null;
         outputCompareLabel = "";
-        encodeInFlight = false;
         isEncodePending = false;
         compareAfterCache = null;
         els.estimatedSizeLabel.textContent = "-- KB";
@@ -4692,130 +4696,73 @@
         ])}`;
       }
 
-      function generateOutputBlob() {
+      async function generateOutputBlob(seq) {
         if (!state.hasImage) return;
-        if (!state.transformedCanvas) {
-          // The rotated bitmap could not be allocated: do not leave the UI stuck on "编码中…"
-          clearOutput();
-          setEncodePending(false);
-          return;
-        }
-        const seq = ++encodeSeq;
+        if (!state.transformedCanvas) throw new Error("无法创建画布，可能是内存不足");
 
-        const outW = Math.max(1, Math.round(state.targetW));
-        const outH = Math.max(1, Math.round(state.targetH));
-
+        const outW = state.targetW;
+        const outH = state.targetH;
         if (outW * outH > MAX_CANVAS_PIXELS || outW > MAX_CANVAS_SIDE || outH > MAX_CANVAS_SIDE) {
-          showToast(`目标尺寸 ${outW}×${outH} 超出浏览器画布上限，请降低输出尺寸`);
-          clearOutput();
-          setEncodePending(false);
-          return;
+          throw new Error(`目标尺寸 ${outW}×${outH} 超出浏览器画布上限，请降低输出尺寸`);
         }
 
-        encodeInFlight = true;
         const requestedFormat = state.outputFormat;
         const pixelKey = buildPixelKey(outW, outH);
-        if (rawEncodeCache && rawEncodeCache.key === pixelKey) {
-          // Only metadata (EXIF / strip switch) changed since the last encode: reuse the compressed pixels
-          finishEncode(rawEncodeCache.blob, requestedFormat, seq, outW, outH);
+        if (rawEncodeCache?.key === pixelKey) {
+          await finishEncode(rawEncodeCache.blob, requestedFormat, seq, outW, outH);
           return;
         }
 
         const outCanvas = document.createElement("canvas");
-        outCanvas.width = outW;
-        outCanvas.height = outH;
-        // BMP and lossy PNG read the pixels back (getImageData): ask for a CPU-backed canvas up front
-        const needsReadback = state.outputFormat === "image/bmp" || (state.outputFormat === "image/png" && state.compressionMode !== "lossless");
-        const ctx = outCanvas.getContext("2d", { willReadFrequently: needsReadback });
-        if (!ctx) releaseCanvas(outCanvas);
-        if (!ctx) {
-          showToast("无法创建画布，可能是内存不足");
-          clearOutput();
-          setEncodePending(false);
-          return;
-        }
-
+        const isBmp = requestedFormat === "image/bmp";
         const isLossless = state.compressionMode === "lossless";
-        const quality = isLossless ? 1.0 : Math.max(0.01, Math.min(0.99, (100 - state.compressionRate) / 100));
-
+        const quantize = requestedFormat === "image/png" && !isLossless;
+        const quality = isLossless ? 1 : (100 - state.compressionRate) / 100;
+        let rawBlob;
         try {
-          // Fill background matte if target format has no alpha channel (JPEG / BMP)
-          if (state.outputFormat === "image/jpeg" || state.outputFormat === "image/bmp") {
+          sizeCanvas(outCanvas, outW, outH);
+          const ctx = outCanvas.getContext("2d", { willReadFrequently: isBmp || quantize });
+          if (!ctx) throw new Error("无法创建画布，可能是内存不足");
+          if (requestedFormat === "image/jpeg" || isBmp) {
             ctx.fillStyle = state.matteColor;
             ctx.fillRect(0, 0, outW, outH);
           }
 
-          // Configure resampling quality
-          if (state.resampleQuality === "pixelated") {
-            ctx.imageSmoothingEnabled = false;
-          } else {
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = state.resampleQuality; // 'high' or 'medium'
-          }
+          ctx.imageSmoothingEnabled = state.resampleQuality !== "pixelated";
+          if (ctx.imageSmoothingEnabled) ctx.imageSmoothingQuality = state.resampleQuality;
+          drawResampled(ctx, state.transformedCanvas, state.cropX, state.cropY, state.cropW, state.cropH,
+            outW, outH, state.resampleQuality);
 
-          // Draw exact cropped source region into target output dimensions
-          drawResampled(
-            ctx,
-            state.transformedCanvas,
-            Math.round(state.cropX),
-            Math.round(state.cropY),
-            Math.round(state.cropW),
-            Math.round(state.cropH),
-            outW,
-            outH,
-            state.resampleQuality
-          );
-
-          // Handle BMP natively via pure JS encoder; release outCanvas before allocating the BMP buffer
-          if (state.outputFormat === "image/bmp") {
+          if (isBmp) {
             const imgData = ctx.getImageData(0, 0, outW, outH);
-            releaseCanvas(outCanvas);
-            const bmpBlob = CodecHelper.encodeBmp(imgData);
-            rawEncodeCache = { key: pixelKey, blob: bmpBlob };
-            finalizeOutputBlob(bmpBlob, outW, outH);
-            return;
+            releaseCanvas(outCanvas); // Return the bitmap before allocating the BMP byte buffer.
+            rawBlob = CodecHelper.encodeBmp(imgData);
+          } else {
+            if (quantize) CodecHelper.quantizeCanvasForLossyPng(ctx, outW, outH, quality);
+            rawBlob = await new Promise((resolve) => outCanvas.toBlob(resolve, requestedFormat, quality));
           }
-
-          // If PNG + Lossy mode is chosen, perform perceptual color quantization so compression slider genuinely reduces size
-          if (state.outputFormat === "image/png" && !isLossless) {
-            CodecHelper.quantizeCanvasForLossyPng(ctx, outW, outH, quality);
-          }
-        } catch (err) {
-          releaseCanvas(outCanvas);
-          throw err;
+        } finally {
+          if (outCanvas.width || outCanvas.height) releaseCanvas(outCanvas);
         }
-
-        outCanvas.toBlob(async (rawBlob) => {
-          // The encoded bytes are all we need: hand the (possibly huge) bitmap back immediately
-          releaseCanvas(outCanvas);
-          if (seq !== encodeSeq) return; // A newer encode has been requested meanwhile
-
-          // A null blob means the encode itself failed (e.g. out of memory). A blob of another type (the browser
-          // silently substituted PNG) means the format is unsupported: only that case may fall back to PNG
-          if (!rawBlob || (rawBlob.type && rawBlob.type !== requestedFormat)) {
-            encodeInFlight = false;
-            if (rawBlob && requestedFormat !== "image/png") {
-              lastScheduledEncodeKey = null;
-              showToast("当前浏览器不支持导出该格式，已自动回退为 PNG");
-              if (requestedFormat === "image/avif") $("btnFormatAvif").style.display = "none";
-              if (requestedFormat === "image/webp") $("btnFormatWebp").style.display = "none";
-              // Go through the real button so banner / matte row / compression mode stay consistent
-              document.querySelector('#formatSegmented .segmented-btn[data-format="image/png"]').click();
-              if (!state.modeTouched && state.compressionMode !== "lossless") {
-                state.autoLosslessForPng = true;
-                document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
-              }
-            } else {
-              showToast("编码失败：输出尺寸过大或内存不足，请降低目标尺寸");
-              clearOutput();
-              setEncodePending(false);
-            }
-            return;
+        if (seq !== encodeSeq) return;
+        if (!rawBlob) throw new Error("输出尺寸过大或内存不足，请降低目标尺寸");
+        if (rawBlob.type !== requestedFormat) {
+          if (rawBlob.type !== "image/png" || requestedFormat === "image/png") {
+            throw new Error("浏览器返回了意外的输出格式");
           }
-
-          rawEncodeCache = { key: pixelKey, blob: rawBlob }; // Metadata-only edits can reuse these bytes
-          finishEncode(rawBlob, requestedFormat, seq, outW, outH);
-        }, requestedFormat, quality);
+          showToast("当前浏览器不支持导出该格式，已自动回退为 PNG");
+          if (requestedFormat === "image/avif") $("btnFormatAvif").style.display = "none";
+          if (requestedFormat === "image/webp") $("btnFormatWebp").style.display = "none";
+          // Encode again: the PNG fallback must not inherit the JPEG matte or skip PNG quantization.
+          document.querySelector('#formatSegmented .segmented-btn[data-format="image/png"]').click();
+          if (!state.modeTouched && state.compressionMode !== "lossless") {
+            state.autoLosslessForPng = true;
+            document.querySelector('#compressionModeSegmented .segmented-btn[data-mode="lossless"]').click();
+          }
+          return;
+        }
+        rawEncodeCache = { key: pixelKey, blob: rawBlob };
+        await finishEncode(rawBlob, requestedFormat, seq, outW, outH);
       }
 
       // Everything after pixel encoding: write / strip metadata, then publish the result.
@@ -4859,12 +4806,10 @@
       }
 
       function finalizeOutputBlob(blob, outW, outH) {
-        if (state.outputUrl) {
-          URL.revokeObjectURL(state.outputUrl);
-        }
-        encodeInFlight = false;
+        const url = URL.createObjectURL(blob);
+        if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
         state.outputBlob = blob;
-        state.outputUrl = URL.createObjectURL(blob);
+        state.outputUrl = url;
         lastCompletedEncodeKey = lastScheduledEncodeKey;
         outputGeometryKey = buildGeometryKey(outW, outH);
         const compareModeStr = state.compressionMode === "lossless" ? "无损输出" : `压缩率 ${state.compressionRate}%`;
