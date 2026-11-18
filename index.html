@@ -3835,8 +3835,8 @@
         state.outputBlob = null;
         compareAfterCache = null;
         releaseCanvas(els.compareAfterCanvas);
-        cropDragState = null;
-        compareDragPointer = null;
+        cancelActiveCropDrag(true);
+        cancelCompareDrag();
         imageSerial++;
         cancelScheduledEncode();
         rawEncodeCache = null;
@@ -4326,9 +4326,9 @@
       let cropDragState = null;
 
       els.cropBox.addEventListener("pointerdown", (e) => {
-        if (!state.hasImage) return;
-        // Right / middle clicks and extra touches must not start (or hijack) a crop drag
-        if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+        if (!state.transformedSource || cropDragState) return;
+        // Extra pointers (including a primary pointer from a different device) must not steal a drag.
+        if (!e.isPrimary || e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         const handle = e.target.closest(".crop-handle");
@@ -4371,8 +4371,8 @@
         cropDragState.moved = true;
         const dxPx = ((e.clientX - startX) / stageW) * state.rotW;
         const dyPx = ((e.clientY - startY) / stageH) * state.rotH;
-        const minW = Math.min(16, state.rotW);
-        const minH = Math.min(16, state.rotH);
+        // Match the keyboard and numeric inputs; a drag from a tiny crop must not jump out to 16 px.
+        const minW = 1, minH = 1;
         const lockedRatio = parseRatioValue(state.cropRatio);
 
         let nx = initCropX;
@@ -4461,9 +4461,15 @@
       window.addEventListener("pointercancel", endCropDrag);
       els.cropBox.addEventListener("lostpointercapture", endCropDrag);
 
+      function releaseCapturedPointer(el, id) {
+        if (el.hasPointerCapture(id)) el.releasePointerCapture(id);
+      }
+
       function cancelActiveCropDrag(willScheduleEncode = true) {
         if (!cropDragState) return;
+        const { pointerId } = cropDragState;
         cropDragState = null;
+        releaseCapturedPointer(els.cropBox, pointerId);
         if (!willScheduleEncode) scheduleOutputEncode();
       }
 
@@ -4991,8 +4997,15 @@
       });
 
       let compareDragPointer = null;
+      function cancelCompareDrag() {
+        if (compareDragPointer === null) return;
+        const id = compareDragPointer;
+        compareDragPointer = null;
+        releaseCapturedPointer(els.compareOverlay, id);
+      }
+
       const startCompareDrag = (e) => {
-        if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return; // right / middle click and extra touches must not start a drag
+        if (!state.compareMode || compareDragPointer !== null || !e.isPrimary || e.button !== 0) return;
         e.preventDefault();
         compareDragPointer = e.pointerId;
         try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
@@ -5329,7 +5342,7 @@
           state.compareMode = !state.compareMode;
           // The pointerup of an interrupted drag is ignored, so the encode it left pending has to start here
           cancelActiveCropDrag(false);
-          compareDragPointer = null;
+          cancelCompareDrag();
           els.btnToggleCompareTop.classList.toggle("btn-filled", state.compareMode);
           els.btnToggleCompareTop.classList.toggle("btn-tonal", !state.compareMode);
           els.btnToggleCompareTop.setAttribute("aria-pressed", String(state.compareMode));
@@ -5457,6 +5470,7 @@
 
         $("btnToggleCropOverlay").addEventListener("click", () => {
           state.showCropOverlay = !state.showCropOverlay;
+          if (!state.showCropOverlay) cancelActiveCropDrag(false);
           $("btnToggleCropOverlay").setAttribute("aria-pressed", String(state.showCropOverlay));
           updateCropBoxVisual();
         });
@@ -5856,6 +5870,8 @@
           // Coalesce bursts of resize notifications into one paint per animation frame
           cancelAnimationFrame(roFrame);
           roFrame = requestAnimationFrame(() => {
+            // The crop drag records its starting display scale. A new layout invalidates that scale.
+            cancelActiveCropDrag(false);
             if (state.hasImage) {
               if (state.compareMode) renderCompareView(); // Already re-fits & paints the stage
               else renderStageCanvas();
