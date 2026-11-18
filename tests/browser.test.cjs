@@ -372,6 +372,19 @@ if (engines.includes('chromium')) {
     assert.equal(await page.locator('.inspector-scroll').evaluate((el) => el.clientHeight > 0), true);
   }, { viewport: { width: 320, height: 390 } }));
 
+  test('chromium: extremely short mobile workspace scrolls from preview to export', { timeout: 30000 }, () => open('chromium', async (page) => {
+    await click(page, '#btnLoadDemo');
+    await ready(page, 'JPEG');
+    await on(page, 'export');
+    assert.equal(await page.locator('#panel-export').isVisible(), true);
+    const workspace = page.locator('.workspace-body');
+    assert.ok(await workspace.evaluate((el) => el.scrollTop > 0));
+    await workspace.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    const save = await page.locator('#btnDownloadExport').boundingBox();
+    const nav = await page.locator('.nav-rail').boundingBox();
+    assert.ok(save.y + save.height <= nav.y);
+  }, { viewport: { width: 320, height: 240 }, isMobile: true, hasTouch: true }));
+
   test('chromium: abnormal theme storage and short mobile viewport', { timeout: 30000 }, () => open('chromium', async (page) => {
     const trigger = page.locator('#btnSeedMobile');
     await trigger.press('Enter');

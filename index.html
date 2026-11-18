@@ -1693,6 +1693,25 @@
       }
     }
 
+    /* With very little vertical space (for example a docked on-screen keyboard),
+       prefer scrolling the whole workspace to clipping the stage or the entire inspector. */
+    @media (max-width: 559px) and (max-height: 300px) {
+      .workspace-body {
+        display: block;
+        overflow-y: auto;
+      }
+      .stage-area {
+        height: 200px;
+      }
+      .inspector-dock {
+        height: auto;
+        overflow: visible;
+      }
+      .inspector-scroll {
+        overflow: visible;
+      }
+    }
+
     /* Small phones in landscape are too narrow for the desktop layout, and the stacked mobile layout
        leaves the inspector only a sliver of height there: put the stage and the inspector side by side */
     @media (min-width: 560px) and (max-width: 767px) and (max-height: 480px) {
@@ -5299,10 +5318,12 @@
         });
 
         // 2. Navigation Rail / Bottom Bar Tabs
+        const scrollableStack = window.matchMedia?.("(max-width: 559px) and (max-height: 300px)");
+        const inspectorScroll = $("inspectorScroll");
         document.querySelectorAll(".nav-item").forEach((btn) => {
           btn.addEventListener("click", () => {
             const tab = btn.dataset.tab;
-            if (state.activeTab !== tab) $("inspectorScroll").scrollTop = 0;
+            if (state.activeTab !== tab) inspectorScroll.scrollTop = 0;
             state.activeTab = tab;
 
             document.querySelectorAll(".nav-item").forEach((b) => {
@@ -5325,7 +5346,7 @@
                 panel.classList.toggle("active", panel.id === `panel-${tab}`);
               }
             });
-
+            if (scrollableStack?.matches) inspectorScroll.scrollIntoView({ block: "start" });
           });
         });
 
