@@ -16,6 +16,11 @@
 
 访问 [ps.92li.uk](https://ps.92li.uk)，或直接下载并打开 `index.html`。输出是重新编码的静态图片，不保留动画或原文件的色彩配置文件。
 
+## 回归测试
+
+- Node.js 22+：`node --test tests/core.test.cjs`，不需要安装依赖。
+- 可选浏览器测试：在独立工具目录安装 Playwright 和相应浏览器，将 `NODE_PATH` 指向该目录的 `node_modules`，运行 `node --test tests/browser.test.cjs`。默认运行 Chromium、Firefox 和 WebKit；可用 `BROWSERS=chromium` 单独运行 Chromium。测试直接用浏览器打开本地 `index.html`，不需要启动服务。
+
 ## 许可
 
 AGPL-3.0
