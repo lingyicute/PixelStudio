@@ -1955,7 +1955,7 @@
           <button class="seed-dot" data-seed="terracotta" style="background:#984716" aria-label="陶土橙"></button>
         </div>
 
-        <button id="btnToggleCompareTop" class="btn btn-tonal btn-sm" aria-pressed="false" disabled title="对比原图与压缩后画质">
+        <button id="btnToggleCompareTop" class="btn btn-tonal btn-sm" aria-pressed="false" disabled title="对比源图裁剪区与导出结果">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3v18"/><path d="M5 12H2"/><path d="M22 12h-3"/><rect x="4" y="5" width="16" height="14" rx="2"/>
           </svg>
@@ -2075,7 +2075,7 @@
             <!-- Before / After Split Curtain Comparison -->
             <div class="compare-overlay" id="compareOverlay">
               <canvas id="compareAfterCanvas"></canvas>
-              <div class="compare-label left">原图未压缩</div>
+              <div class="compare-label left">源图裁剪区</div>
               <div class="compare-label right" id="compareRightLabel">输出预览</div>
               <div class="compare-divider" id="compareDivider" style="left:50%">
                 <div class="compare-handle">
@@ -2139,7 +2139,7 @@
                   </div>
                   <div>
                     <h2 class="card-title">无损像素裁剪</h2>
-                    <p class="card-subtitle">直接提取原始像素区域，无二次重采样损耗</p>
+                    <p class="card-subtitle">原尺寸裁剪不重新采样；导出编码可单独设置</p>
                   </div>
                 </div>
                 <button class="btn btn-text btn-sm" id="btnResetCrop">全图</button>
@@ -2258,8 +2258,8 @@
               <div class="m3-field">
                 <label for="selResample">重采样插值算法</label>
                 <select id="selResample">
-                  <option value="high" selected>高质量平滑 (Bicubic / Lanczos 适合照片)</option>
-                  <option value="medium">标准双线性 (Bilinear 均衡速度)</option>
+                  <option value="high" selected>高质量平滑（多级缩小，适合照片）</option>
+                  <option value="medium">标准平滑（浏览器插值）</option>
                   <option value="pixelated">最近邻硬边缘 (Nearest 适合像素画/二维码)</option>
                 </select>
               </div>
@@ -5090,7 +5090,7 @@
       // Keyboard access for the before/after divider (Left/Right = 2%, Shift = 10%, Home/End = edges)
       els.compareDivider.setAttribute("role", "slider");
       els.compareDivider.setAttribute("tabindex", "0");
-      els.compareDivider.setAttribute("aria-label", "原图与输出对比分隔线，左右方向键移动");
+      els.compareDivider.setAttribute("aria-label", "源图裁剪区与输出对比分隔线，左右方向键移动");
       els.compareDivider.setAttribute("aria-valuemin", "2");
       els.compareDivider.setAttribute("aria-valuemax", "98");
       els.compareDivider.setAttribute("aria-orientation", "horizontal");
