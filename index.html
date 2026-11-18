@@ -3960,6 +3960,7 @@
       }
 
       function initWorkspaceWithImage(img, meta) {
+        const focusFromPicker = els.dropzoneCard.contains(document.activeElement);
         const safe = ensureSafeSource(img);
         // Free the previous working canvases right away: big canvases are scarce on mobile browsers
         if (state.transformedSource !== state.sourceImg) releaseCanvas(state.transformedSource);
@@ -4067,6 +4068,8 @@
         applyDefaultOutputFormat(meta);
         state.hasImage = true;
         rebuildTransformedSource(true);
+        // The picker is now hidden. Keep keyboard users on a usable control instead of losing focus.
+        if (focusFromPicker) els.cropBox.focus({ preventScroll: true });
         return safe.downscaled;
       }
 

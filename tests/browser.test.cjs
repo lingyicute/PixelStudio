@@ -166,6 +166,15 @@ for (const engine of engines) {
 }
 
 if (engines.includes('chromium')) {
+  test('chromium: keyboard focus moves from the picker to the new crop box', { timeout: 30000 }, () => open('chromium', async (page) => {
+    await page.locator('#btnLoadDemo').press('Enter');
+    await ready(page, '1600×1066 · JPEG');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'cropBox');
+    await page.keyboard.press('Shift+ArrowLeft');
+    await ready(page, '1599×1066 · JPEG');
+    assert.equal(await page.locator('#inpCropW').inputValue(), '1599');
+  }));
+
   test('chromium: geometry and metadata editing are enabled only once an image is loaded', { timeout: 30000 }, () => open('chromium', async (page) => {
     assert.equal(await page.locator('#inpCropW').isDisabled(), true);
     assert.equal(await page.locator('#inpCropW').inputValue(), '');
