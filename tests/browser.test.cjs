@@ -345,6 +345,20 @@ if (engines.includes('chromium')) {
     };
   }));
 
+  test('chromium: size metrics and save stay in a very narrow or short dock', { timeout: 30000 }, () => open('chromium', async (page) => {
+    const footer = page.locator('.export-sticky-footer');
+    await page.locator('#sizeDeltaPill').evaluate((el) => { el.textContent = '+1920000000.0%'; });
+    await page.locator('#estimatedSizeLabel').evaluate((el) => { el.textContent = '183.1 MB'; });
+    assert.equal(await footer.evaluate((el) => el.scrollWidth <= el.clientWidth), true);
+    await page.setViewportSize({ width: 1024, height: 200 });
+    await on(page, 'export');
+    const nav = page.locator('.nav-rail');
+    assert.ok(await nav.evaluate((el) => el.scrollTop > 0));
+    const save = await page.locator('#btnDownloadExport').boundingBox();
+    assert.ok(save.y + save.height <= 200);
+    assert.equal(await page.locator('.inspector-scroll').evaluate((el) => el.clientHeight > 0), true);
+  }, { viewport: { width: 320, height: 390 } }));
+
   test('chromium: abnormal theme storage and short mobile viewport', { timeout: 30000 }, () => open('chromium', async (page) => {
     const trigger = page.locator('#btnSeedMobile');
     await trigger.press('Enter');
