@@ -268,7 +268,7 @@ if (engines.includes('chromium')) {
     await ready(page, '9×1 · PNG');
   }));
 
-  test('chromium: privacy failures cannot export the cached unverified bytes', { timeout: 30000 }, () => open('chromium', async (page) => {
+  test('chromium: metadata failures cannot export the cached unverified bytes', { timeout: 30000 }, () => open('chromium', async (page) => {
     await page.locator('#fileInput').setInputFiles(await imageFixture(page, 'private.png', 2, 1, ['red', 'blue']));
     await ready(page, 'PNG');
     await page.evaluate(() => {
@@ -280,6 +280,9 @@ if (engines.includes('chromium')) {
       window.failMetadata = true;
     });
     await on(page, 'exif');
+    await type(page, '#exifArtist', 'Edited artist');
+    await page.waitForFunction(() => document.querySelector('#m3Snackbar').textContent.includes('无法写入 EXIF'));
+    assert.equal(await page.locator('#btnDownloadExport').isDisabled(), true);
     await click(page, 'label:has(#chkStripExif)');
     assert.equal(await page.locator('#chkStripExif').isChecked(), true);
     await page.waitForFunction(() => document.querySelector('#m3Snackbar').textContent.includes('无法确认 EXIF 已清除'));

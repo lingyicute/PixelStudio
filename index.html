@@ -4951,10 +4951,9 @@
           }
         } catch (err) {
           if (seq !== encodeSeq) return;
-          // Never fall back to unverified bytes when the user explicitly requested privacy stripping.
-          if (state.stripExif) throw new Error("无法确认 EXIF 已清除，未导出图片", { cause: err });
-          console.warn("EXIF 写入失败，已保留编码器原始结果", err);
-          showToast("EXIF 写入失败，导出文件未包含编辑后的元数据：" + (err?.message || err));
+          // A download must match the requested edits, not the unverified encoder output.
+          const message = state.stripExif ? "无法确认 EXIF 已清除，未导出图片" : "无法写入 EXIF，未导出图片";
+          throw new Error(message, { cause: err });
         }
 
         if (seq !== encodeSeq) return;
