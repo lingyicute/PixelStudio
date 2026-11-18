@@ -199,6 +199,15 @@ test('Shutter values close to a unit fraction are not rounded to it', async () =
   }
 });
 
+test('EXIF sensitivity and fixed-point fields round trip at their declared limits', async () => {
+  const tiff = exif.buildTiffBuffer({ iso: '4294967295', fNumber: '0.01', focalLength: '42949672.95' });
+  const result = await parse(png(pngChunk('eXIf', tiff)));
+  assert.equal(result.iso, '4294967295');
+  assert.equal(result.fNumber, '0.01');
+  assert.equal(result.focalLength, '42949672.95');
+  assert.equal(exif.parsePositiveFixed('42949672.96'), 0);
+});
+
 test('Rounded resize dimensions obey both browser limits', () => {
   for (const [w, h, sx, sy] of [[8000, 8000, 3, 3], [1600, 1066, 10, 10], [1, 16383, 0.0001, 100],
     [8000, 8000, 8, 0.5], [16383, 3906, 5, 5], [2, 2, 0.01, 0.01]]) {
