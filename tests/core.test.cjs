@@ -97,6 +97,17 @@ test('JPEG skips a bad EXIF header, but never reads past a truncated segment', a
   assert.equal((await parse(exif.processJpegBytes(good, true))).hasExif, false);
 });
 
+test('JPEG stripping keeps scan bytes and requires a complete end marker', async () => {
+  const scan = Buffer.from('ffda0008010100003f0040ff0020ffd041', 'hex');
+  const tagged = exif.processJpegBytes(jpeg(), false, { artist: 'Test artist' });
+  const app1 = tagged.subarray(2, -2);
+  const comment = Buffer.from('fffe00047478', 'hex');
+  const multi = Buffer.concat([jpeg(scan, comment, app1, scan), ascii('trailing data')]);
+  assert.equal((await parse(multi)).artist, 'Test artist');
+  assert.deepEqual(Buffer.from(exif.processJpegBytes(multi, true)), jpeg(scan, scan));
+  assert.throws(() => exif.processJpegBytes(jpeg(scan).subarray(0, -2), true), /JPEG/);
+});
+
 test('WebP bounds EXIF by the RIFF size and cleans feature flags on strip', async () => {
   const base = webp(riffChunk('VP8L', Buffer.from([0x2f, 0, 0, 0, 0])));
   const added = Buffer.from(exif.injectWebpExif(base, false, { artist: 'Camera' }, 1, 1));
