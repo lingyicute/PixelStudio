@@ -264,8 +264,17 @@ if (engines.includes('chromium')) {
     await page.waitForFunction(() => window.pendingEncodes.length === 2);
     assert.deepEqual(await page.evaluate(() => window.pendingEncodes.map((e) => e.width)), [7, 9]);
     assert.equal(await page.locator('#btnDownloadExport').isDisabled(), true);
+    assert.equal(await page.locator('#estimatedSizeLabel').textContent(), '—');
+    assert.equal(await page.locator('#sizeDeltaPill').textContent(), '');
     await page.evaluate(() => window.pendingEncodes[1].release());
     await ready(page, '9×1 · PNG');
+    const size = await page.locator('#estimatedSizeLabel').textContent();
+    await type(page, '#inpResizeW', 10);
+    await page.waitForFunction(() => window.pendingEncodes.length === 3);
+    await type(page, '#inpResizeW', 9);
+    await ready(page, '9×1 · PNG');
+    assert.equal(await page.locator('#estimatedSizeLabel').textContent(), size);
+    await page.evaluate(() => window.pendingEncodes[2].release());
   }));
 
   test('chromium: metadata failures cannot export the cached unverified bytes', { timeout: 30000 }, () => open('chromium', async (page) => {
@@ -287,6 +296,7 @@ if (engines.includes('chromium')) {
     assert.equal(await page.locator('#chkStripExif').isChecked(), true);
     await page.waitForFunction(() => document.querySelector('#m3Snackbar').textContent.includes('无法确认 EXIF 已清除'));
     assert.equal(await page.locator('#btnDownloadExport').isDisabled(), true);
+    assert.match(await page.locator('#exportSpecSummary').textContent(), /无法确认 EXIF 已清除/);
     await page.evaluate(() => { window.failMetadata = false; });
     await click(page, 'label:has(#chkStripExif)');
     assert.equal(await page.locator('#chkStripExif').isChecked(), false);

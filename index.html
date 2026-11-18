@@ -3966,7 +3966,8 @@
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
         outputGeometryKey = null;
-        outputCompareLabel = "";
+        outputDetails = null;
+        encodeFailure = "";
         isEncodePending = false;
         state.hasImage = true;
         state.sourceImg = safe.source;
@@ -4000,14 +4001,6 @@
         els.btnLockAspect.setAttribute("aria-pressed", "true");
         els.iconLockClosed.style.display = "block";
         els.iconLockOpen.style.display = "none";
-        els.estimatedSizeLabel.textContent = "-- KB";
-        // The previous picture's spec (or the "no image" placeholder) must not linger while the first encode runs
-        els.exportSpecSummary.textContent = "--";
-        els.sizeDeltaPill.textContent = "等待编码";
-        els.sizeDeltaPill.title = "";
-        els.exportSpecSummary.title = "";
-        els.sizeDeltaPill.classList.remove("increase");
-
         if (safe.downscaled) {
           showToast(`原图 ${img.naturalWidth}×${img.naturalHeight} 超出浏览器画布像素上限，已安全缩放至 ${safe.w}×${safe.h} 进行处理`);
         }
@@ -4145,8 +4138,7 @@
           compareBeforeKey = null;
           releaseCanvas(els.previewCanvas);
           els.cropOverlay.classList.remove("visible");
-          clearOutput();
-          setEncodePending(false);
+          clearOutput("无法创建变换画布，请重置图像或尝试较小的图片");
           return;
         }
         if (state.compareMode) renderCompareView();
@@ -4630,7 +4622,8 @@
       let lastScheduledEncodeKey = null;
       let lastCompletedEncodeKey = null;
       let outputGeometryKey = null;
-      let outputCompareLabel = "";
+      let outputDetails = null;
+      let encodeFailure = "";
       let encodeWorkerActive = false;
       let encodeQueued = false;
       let isEncodePending = false;
@@ -4682,9 +4675,9 @@
         } catch (err) {
           if (seq === encodeSeq) {
             console.error(err);
-            showToast("编码失败：" + (err?.message || "内存不足，请降低目标尺寸"));
-            clearOutput();
-            setEncodePending(false);
+            const message = err?.message || "内存不足，请降低目标尺寸";
+            showToast("编码失败：" + message);
+            clearOutput(message);
           }
         } finally {
           encodeWorkerActive = false;
@@ -4695,7 +4688,7 @@
       }
 
       // Drop the last encoded result so a failed encode can never export a stale file
-      function clearOutput() {
+      function clearOutput(reason) {
         cancelScheduledEncode();
         if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
         state.outputUrl = null;
@@ -4703,28 +4696,36 @@
         lastScheduledEncodeKey = null;
         lastCompletedEncodeKey = null;
         outputGeometryKey = null;
-        outputCompareLabel = "";
-        isEncodePending = false;
+        outputDetails = null;
+        encodeFailure = reason;
         compareAfterCache = null;
-        els.estimatedSizeLabel.textContent = "-- KB";
-        els.sizeDeltaPill.textContent = "编码失败";
-        els.sizeDeltaPill.title = "";
-        els.exportSpecSummary.title = "";
-        els.sizeDeltaPill.classList.remove("increase");
-        els.exportSpecSummary.textContent = "--";
+        setEncodePending(false);
         if (state.compareMode) renderCompareView();
+      }
+
+      function setTextIfChanged(element, text) {
+        if (element.textContent !== text) element.textContent = text;
       }
 
       function setEncodePending(pending) {
         isEncodePending = pending;
+        if (pending) encodeFailure = "";
+        const info = pending ? null : outputDetails;
+        const spec = pending ? "正在编码当前设置…" : (info?.spec || encodeFailure || "等待编码");
+        const size = info?.size || "—";
+        const delta = info?.delta || "";
+        setTextIfChanged(els.exportSpecSummary, spec);
+        setTextIfChanged(els.estimatedSizeLabel, size);
+        setTextIfChanged(els.sizeDeltaPill, delta);
+        if (els.exportSpecSummary.title !== spec) els.exportSpecSummary.title = spec;
+        if (els.sizeDeltaPill.title !== delta) els.sizeDeltaPill.title = delta;
+        els.sizeDeltaPill.classList.toggle("increase", Boolean(info?.increase));
         els.estimatedSizeLabel.classList.toggle("pending", pending);
         els.btnDownloadExport.disabled = pending || !state.hasImage || !state.outputBlob;
-        // Crop drags call this on every pointer move: only write the label when it really changes
-        const label = pending ? "编码中…" : "导出保存图片";
-        if (els.btnDownloadText.textContent !== label) els.btnDownloadText.textContent = label;
+        setTextIfChanged(els.btnDownloadText, pending ? "编码中…" : "导出保存图片");
         if (pending && state.compareMode) {
           clearCompareAfter();
-          if (els.compareRightLabel.textContent !== "编码中…") els.compareRightLabel.textContent = "编码中…";
+          setTextIfChanged(els.compareRightLabel, "编码中…");
         }
       }
 
@@ -4970,36 +4971,19 @@
         const modeText = blob.type === "image/bmp" ? "未压缩" : state.compressionMode === "lossy"
           ? `质量 ${state.compressionQuality}/100` : blob.type === "image/png" || webpLossless
             ? "无损" : "最高画质（非无损）";
-        outputCompareLabel = `${modeText} (${formatBytes(blob.size)})`;
-        compareAfterCache = null; // Stale decoded copy of the previous output
-        setEncodePending(false);
-
-        const fmtExtMap = {
-          "image/jpeg": "JPEG",
-          "image/png": "PNG",
-          "image/webp": "WebP",
-          "image/bmp": "BMP",
-          "image/avif": "AVIF"
+        const fmtName = {
+          "image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WebP", "image/bmp": "BMP", "image/avif": "AVIF"
+        }[blob.type] || "IMG";
+        const size = formatBytes(blob.size);
+        const diffPct = state.originalBytes > 0 ? (blob.size - state.originalBytes) * 100 / state.originalBytes : null;
+        const increase = diffPct > 0;
+        const delta = diffPct === null ? "" : increase ? `+${diffPct.toFixed(1)}%` : `节省 ${Math.abs(diffPct).toFixed(1)}%`;
+        outputDetails = {
+          spec: `${outW}×${outH} · ${fmtName} (${modeText})`, size, delta, increase,
+          compare: `${modeText} (${size})`
         };
-        const fmtName = fmtExtMap[state.outputFormat] || "IMG";
-        els.exportSpecSummary.textContent = `${outW}×${outH} · ${fmtName} (${modeText})`;
-        els.estimatedSizeLabel.textContent = formatBytes(blob.size);
-
-        if (state.originalBytes > 0) {
-          const diffPct = ((blob.size - state.originalBytes) / state.originalBytes) * 100;
-          if (diffPct <= 0) {
-            els.sizeDeltaPill.textContent = `节省 ${Math.abs(diffPct).toFixed(1)}%`;
-            els.sizeDeltaPill.classList.remove("increase");
-          } else {
-            els.sizeDeltaPill.textContent = `+${diffPct.toFixed(1)}%`;
-            els.sizeDeltaPill.classList.add("increase");
-          }
-        } else {
-          els.sizeDeltaPill.textContent = "";
-          els.sizeDeltaPill.classList.remove("increase");
-        }
-        els.exportSpecSummary.title = els.exportSpecSummary.textContent;
-        els.sizeDeltaPill.title = els.sizeDeltaPill.textContent;
+        compareAfterCache = null; // Stale decoded copy of the previous output.
+        setEncodePending(false);
 
         if (state.compareMode) {
           renderCompareView();
@@ -5042,7 +5026,7 @@
         const url = state.outputUrl;
         if (!isCurrentCompareOutput(url)) {
           clearCompareAfter();
-          els.compareRightLabel.textContent = isEncodePending ? "编码中…" : "输出预览";
+          els.compareRightLabel.textContent = isEncodePending ? "编码中…" : encodeFailure ? "编码失败" : "输出预览";
           return;
         }
 
@@ -5068,7 +5052,7 @@
         }
         try {
           if (entry.ready && paintCompareAfter(entry.img)) {
-            els.compareRightLabel.textContent = outputCompareLabel || "输出预览";
+            els.compareRightLabel.textContent = outputDetails?.compare || "输出预览";
             return;
           }
         } catch (err) {
