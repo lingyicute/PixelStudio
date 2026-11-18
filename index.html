@@ -2775,20 +2775,22 @@
           return /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(s) ? parseFloat(s) : NaN;
         },
 
-        // Shutter speeds below 1 s read better as the classic "1/250" form
+        _unitFractionDenominator(seconds) {
+          const inv = 1 / seconds;
+          const den = Math.round(inv);
+          // Treat only numeric rounding noise as a unit fraction, not any value within 1% of it.
+          return den >= 2 && den <= 0xffffffff && Math.abs(den - inv) <= Number.EPSILON * inv * 4 ? den : 0;
+        },
+
         formatExposure(seconds) {
-          if (!(seconds > 0)) return "";
-          if (seconds < 1) {
-            const inv = 1 / seconds;
-            // "1/1" would be a confusing way to spell a full second: leave 0.99x s as a decimal
-            if (Math.round(inv) >= 2 && Math.abs(inv - Math.round(inv)) / inv < 0.01) return `1/${Math.round(inv)}`;
-          }
-          return String(Number(seconds.toPrecision(6)));
+          if (!(seconds > 0) || !Number.isFinite(seconds)) return "";
+          const den = this._unitFractionDenominator(seconds);
+          return den ? `1/${den}` : String(Number(seconds.toPrecision(12)));
         },
 
         canonicalExposure(raw) {
-          const v = this.parseExposure(raw);
-          return v >= 1e-6 && v <= 3600 ? this.formatExposure(v) : "";
+          const seconds = this.parseExposure(raw);
+          return seconds >= 1 / 0xffffffff && seconds <= 0xffffffff ? this.formatExposure(seconds) : "";
         },
 
         // EXIF requires "YYYY:MM:DD HH:MM:SS"; accept common variants (incl. ISO 8601 with fractional
@@ -2895,14 +2897,13 @@
             if (!(floatVal > 0) || !Number.isFinite(floatVal)) return;
             let num;
             let den;
-            const inv = 1 / floatVal;
-            if (allowUnitFraction && floatVal < 1 && Math.round(inv) >= 2 && Math.abs(inv - Math.round(inv)) / inv < 0.01) {
-              // Classic shutter fractions such as 1/125 s
+            const unitDen = allowUnitFraction ? this._unitFractionDenominator(floatVal) : 0;
+            if (unitDen) {
               num = 1;
-              den = Math.round(inv);
+              den = unitDen;
             } else {
-              num = Math.round(floatVal * scale);
-              den = scale;
+              den = Math.max(1, Math.min(scale, Math.floor(0xffffffff / floatVal)));
+              num = Math.round(floatVal * den);
               const g = gcd(num, den);
               if (g > 1) { num /= g; den /= g; }
             }
@@ -2941,7 +2942,7 @@
               addLong(exifIfd, 0xa002, dims.w); // PixelXDimension: tells readers the real output size
               addLong(exifIfd, 0xa003, dims.h); // PixelYDimension
             }
-            addRational(exifIfd, 0x829a, expTime, 1000000, true);
+            addRational(exifIfd, 0x829a, expTime, 0xffffffff, true);
             addRational(exifIfd, 0x829d, fNum, 100);
             if (isoVal > 0) {
               // ISOSpeedRatings is a SHORT: 65535 means "overflow", the real value goes in the LONG
