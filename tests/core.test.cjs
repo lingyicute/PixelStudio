@@ -98,6 +98,34 @@ test('JPEG skips a bad EXIF header, but never reads past a truncated segment', a
   assert.equal((await parse(exif.processJpegBytes(good, true))).hasExif, false);
 });
 
+test('JPEG and WebP prefer complete EXIF over an earlier truncated directory', async () => {
+  const app1 = (tiff) => {
+    const header = Buffer.from('ffe10000457869660000', 'hex');
+    header.writeUInt16BE(tiff.length + 8, 2);
+    return Buffer.concat([header, tiff]);
+  };
+  const partial = Buffer.from(exif.buildTiffBuffer({ make: 'A' })).subarray(0, 22);
+  const complete = Buffer.from(exif.buildTiffBuffer({ artist: 'Complete' }));
+  const jpegResult = await parse(jpeg(app1(partial), app1(complete)));
+  assert.equal(jpegResult.artist, 'Complete');
+  assert.equal(jpegResult.make, ''); // Do not mix fields from two different EXIF segments.
+  const fallback = await parse(jpeg(app1(partial)));
+  assert.equal(fallback.make, 'A'); // Preserve readable fields if no complete block exists.
+
+  const brokenPointer = Buffer.from(exif.buildTiffBuffer({ make: 'B', iso: '100' }));
+  brokenPointer.writeUInt32LE(0xffffffff, ifdEntry(brokenPointer, 8, 0x8769) + 8);
+  assert.equal((await parse(jpeg(app1(brokenPointer), app1(complete)))).artist, 'Complete');
+  const brokenValue = Buffer.from(exif.buildTiffBuffer({ make: 'Camera' }));
+  brokenValue.writeUInt32LE(0xffffffff, ifdEntry(brokenValue, 8, 0x010f) + 8);
+  assert.equal((await parse(jpeg(app1(brokenValue), app1(complete)))).artist, 'Complete');
+
+  const image = riffChunk('VP8L', Buffer.from([0x2f, 0, 0, 0, 0]));
+  const webpResult = await parse(webp(image, riffChunk('EXIF', partial), riffChunk('EXIF', complete)));
+  assert.equal(webpResult.artist, 'Complete');
+  assert.equal(webpResult.make, '');
+  assert.equal((await parse(webp(image, riffChunk('EXIF', partial)))).make, 'A');
+});
+
 test('JPEG stripping keeps scan bytes and requires a complete end marker', async () => {
   const scan = Buffer.from('ffda0008010100003f0040ff0020ffd041', 'hex');
   const tagged = exif.processJpegBytes(jpeg(), false, { artist: 'Test artist' });
