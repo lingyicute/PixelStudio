@@ -1170,6 +1170,18 @@
     .m3-field #exifExposure {
       font-family: var(--font-mono);
     }
+    /* Fields and sliders are disabled until a picture is loaded: the explicit text colour and pointer
+       cursor above would otherwise hide the browser's disabled look, so they seemed editable */
+    .m3-field input:disabled,
+    .m3-field select:disabled,
+    input[type="range"].m3-slider:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    /* The EXIF form is dimmed as a whole while its fields are switched off */
+    #exifFormFields .m3-field input:disabled {
+      opacity: 1;
+    }
 
     /* Resize Aspect Lock Row */
     .resize-lock-row {
