@@ -5790,12 +5790,14 @@
           });
         });
 
-        [els.exifFNumber, els.exifFocal].forEach((inp) => {
+        // Like the shutter speed and date fields, say why a value disappears instead of clearing it silently
+        [[els.exifFNumber, "光圈值"], [els.exifFocal, "焦距"]].forEach(([inp, name]) => {
           inp.addEventListener("change", () => {
             const raw = inp.value.trim();
             if (!raw) return;
             const v = ExifEngine.parsePositiveFixed(raw);
             const next = v > 0 ? String(v) : "";
+            if (!next) showToast(`${name}无效（应为不小于 0.01 的数值），已清除该字段`);
             if (inp.value !== next) {
               inp.value = next;
               readExifFromInputs();
@@ -5809,6 +5811,7 @@
           if (!raw) return;
           const iso = ExifEngine.parseIso(raw);
           const next = iso > 0 ? String(iso) : "";
+          if (!next) showToast("ISO 感光度无效（应为不小于 1 的整数），已清除该字段");
           if (els.exifIso.value !== next) {
             els.exifIso.value = next;
             readExifFromInputs();
