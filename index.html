@@ -5813,7 +5813,7 @@
             if (!raw) return;
             const v = ExifEngine.parsePositiveFixed(raw);
             const next = v > 0 ? String(v) : "";
-            if (!next) showToast(`${name}无效（应为不小于 0.01 的数值），已清除该字段`);
+            if (!next) showToast(`${name}无效（应在 0.01 到 42949672.95 之间），已清除该字段`);
             if (inp.value !== next) {
               inp.value = next;
               readExifFromInputs();
@@ -5825,9 +5825,11 @@
         els.exifIso.addEventListener("change", () => {
           const raw = els.exifIso.value.trim();
           if (!raw) return;
+          const numeric = Number(raw);
           const iso = ExifEngine.parseIso(raw);
           const next = iso > 0 ? String(iso) : "";
-          if (!next) showToast("ISO 感光度无效（应为不小于 1 的整数），已清除该字段");
+          if (!next) showToast("ISO 感光度无效（应为 1 到 4294967295 的整数），已清除该字段");
+          else if (numeric > 0xffffffff) showToast(`ISO 感光度超出 EXIF 上限，已调整为 ${next}`);
           if (els.exifIso.value !== next) {
             els.exifIso.value = next;
             readExifFromInputs();

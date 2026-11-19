@@ -234,6 +234,12 @@ if (engines.includes('chromium')) {
     await type(page, '#exifFNumber', -1.8);
     await page.waitForFunction(() => document.querySelector('#m3Snackbar').textContent.includes('光圈值无效'));
     assert.equal(await page.locator('#exifFNumber').inputValue(), '');
+    await type(page, '#exifIso', 4294967296);
+    await page.waitForFunction(() => document.querySelector('#m3Snackbar').textContent.includes('已调整为 4294967295'));
+    assert.equal(await page.locator('#exifIso').inputValue(), '4294967295');
+    await type(page, '#exifFNumber', 42949672.96);
+    await page.waitForFunction(() => document.querySelector('#m3Snackbar').textContent.includes('0.01 到 42949672.95'));
+    assert.equal(await page.locator('#exifFNumber').inputValue(), '');
   }));
 
   test('chromium: a capped resize keeps the requested slider value', { timeout: 30000 }, () => open('chromium', async (page) => {
