@@ -250,6 +250,11 @@ if (engines.includes('chromium')) {
     await click(page, '[data-scale="0.5"]');
     assert.equal(await slider.inputValue(), '50');
     assert.equal(await page.locator('#resizePresetChips .active').count(), 1);
+    await click(page, '#btnLockAspect');
+    await type(page, '#inpResizeW', 20000);
+    await page.waitForFunction(() => document.querySelector('#m3Snackbar').textContent.includes('宽度超出浏览器画布上限，已调整为 16383 px'));
+    assert.equal(await page.locator('#inpResizeW').inputValue(), '16383');
+    await ready(page, '16383×1 · PNG');
   }));
 
   test('chromium: detected file format and unknown input preserve transparency', { timeout: 30000 }, () => open('chromium', async (page) => {

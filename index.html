@@ -5666,6 +5666,10 @@
             state.resizeLimit = 1;
             syncResizeInputs(input);
           }
+          // The field keeps the typed number until blur: say so when the canvas limits cut it down,
+          // instead of silently replacing it later (the ratio note only covers the locked axis).
+          const applied = byWidth ? state.targetW : state.targetH;
+          if (applied < raw) showToast(`目标${byWidth ? "宽度" : "高度"}超出浏览器画布上限，已调整为 ${applied} px`);
           if (state.compareMode) renderCompareView();
           scheduleOutputEncode();
         };
