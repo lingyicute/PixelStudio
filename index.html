@@ -5011,7 +5011,8 @@
         const size = formatBytes(blob.size);
         const diffPct = state.originalBytes > 0 ? (blob.size - state.originalBytes) * 100 / state.originalBytes : null;
         const increase = diffPct > 0;
-        const delta = diffPct === null ? "" : increase ? `+${diffPct.toFixed(1)}%` : `节省 ${Math.abs(diffPct).toFixed(1)}%`;
+        const delta = diffPct === null ? "" : diffPct === 0 ? "体积不变"
+          : increase ? `+${diffPct.toFixed(1)}%` : `节省 ${Math.abs(diffPct).toFixed(1)}%`;
         outputDetails = {
           spec: `${outW}×${outH} · ${fmtName} (${modeText})`, size, delta, increase,
           compare: `${modeText} (${size})`

@@ -439,6 +439,19 @@ if (engines.includes('chromium')) {
     };
   }));
 
+  test('chromium: an unchanged output size is not reported as savings', { timeout: 30000 }, () => open('chromium', async (page) => {
+    await page.locator('#fileInput').setInputFiles(await imageFixture(page, 'one.png', 1, 1, ['red']));
+    await ready(page, '1×1 · PNG');
+    await on(page, 'export');
+    await format(page, 'bmp');
+    await ready(page, '1×1 · BMP');
+    const bmp = await download(page);
+    await page.locator('#fileInput').setInputFiles({ name: 'same.bmp', mimeType: 'image/bmp', buffer: bmp.bytes });
+    await page.waitForFunction(() => document.querySelector('#fileNameLabel').textContent === 'same.bmp');
+    await ready(page, '1×1 · BMP');
+    assert.equal(await page.locator('#sizeDeltaPill').textContent(), '体积不变');
+  }));
+
   test('chromium: size metrics and save stay in a very narrow or short dock', { timeout: 30000 }, () => open('chromium', async (page) => {
     const footer = page.locator('.export-sticky-footer');
     await page.locator('#sizeDeltaPill').evaluate((el) => { el.textContent = '+1920000000.0%'; });
