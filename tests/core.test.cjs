@@ -76,11 +76,12 @@ test('PNG ignores invalid CRC and over-limit decompression, and prioritizes EXIF
   const badCrc = pngChunk('tEXt', ascii('Software\0invalid'));
   badCrc[badCrc.length - 1] ^= 0xff;
   const compressed = pngChunk('zTXt', textData('Description\0\0', deflateSync(Buffer.alloc(40000, 65))));
+  const badMethod = pngChunk('iTXt', textData('Description\0\x00\x01\0\0', ascii('invalid method')));
   const fallback = pngChunk('tEXt', ascii('Description\0fallback'));
   const textDate = pngChunk('tEXt', ascii('Creation Time\0Tue, 02 Jan 2024 15:04:05 +0000'));
   const tiffDate = pngChunk('eXIf', exif.buildTiffBuffer({ dateTime: '2021:03:04 05:06:07' }));
   for (const dates of [[textDate, tiffDate], [tiffDate, textDate]]) {
-    const result = await parse(png(badCrc, compressed, fallback, ...dates));
+    const result = await parse(png(badCrc, compressed, badMethod, fallback, ...dates));
     assert.equal(result.description, 'fallback');
     assert.equal(result.software, '');
     assert.equal(result.dateTime, '2021:03:04 05:06:07');

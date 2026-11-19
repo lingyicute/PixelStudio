@@ -2639,7 +2639,8 @@
           if (utf8) {
             const flag = bytes[start++];
             const method = bytes[start++];
-            if (flag !== 0 && (flag !== 1 || method !== 0)) return "";
+            // The method byte is present and must be zero even when compression is disabled.
+            if ((flag !== 0 && flag !== 1) || method !== 0) return "";
             compressed = flag === 1;
             const languageEnd = bytes.indexOf(0, start);
             if (languageEnd < 0) return "";
