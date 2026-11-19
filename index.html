@@ -2317,6 +2317,7 @@
               </div>
 
               <div id="exifFormFields" style="display:flex;flex-direction:column;gap:10px;">
+                <p class="card-subtitle">每项文本最多 32767 个 UTF-8 字节，JPEG 的 EXIF 总量最多 64KB。超限时请缩短文本或清除 EXIF。</p>
                 <div style="display:flex;gap:8px;">
                   <button class="btn btn-tonal btn-sm" style="flex:1;" id="btnFillSampleExif">填入示例相机参数</button>
                   <button class="btn btn-outlined btn-sm" style="flex:1;" id="btnClearGpsOnly">仅清除 GPS 定位</button>
@@ -2989,7 +2990,8 @@
         // RGB is the default for uncompressed PNG; JPEG and lossy WebP use YCbCr.
         buildTiffBuffer(meta, dims, forJpeg = false, rgb = !forJpeg) {
           const encoder = new TextEncoder();
-          const MAX_TEXT_BYTES = 8000;
+          // Leave room for the NUL terminator within the bounded TIFF text reader.
+          const MAX_TEXT_BYTES = MAX_METADATA_TEXT_BYTES - 1;
           const makeStr = (meta.make || "").trim();
           const modelStr = (meta.model || "").trim();
           const artistStr = (meta.artist || "").trim();
@@ -3014,13 +3016,10 @@
           const ifd0 = [];
           const addAscii = (list, tag, str) => {
             if (!str) return;
-            let raw = encoder.encode(str);
+            if (str.includes("\0")) throw new Error("EXIF 文本不能包含空字符，请删除后重试");
+            const raw = encoder.encode(str);
             if (raw.length > MAX_TEXT_BYTES) {
-              // Cut on a UTF-8 character boundary so one oversized field cannot push the
-              // whole JPEG APP1 segment past 64 KB (which used to drop ALL metadata)
-              let end = MAX_TEXT_BYTES;
-              while (end > 0 && (raw[end] & 0xc0) === 0x80) end--;
-              raw = raw.subarray(0, end);
+              throw new Error(`EXIF 单项文本超过 ${MAX_TEXT_BYTES} UTF-8 字节，请缩短后重试`);
             }
             const buf = new Uint8Array(raw.length + 1);
             buf.set(raw);
@@ -5027,7 +5026,7 @@
           if (seq !== encodeSeq) return;
           // A download must match the requested edits, not the unverified encoder output.
           const message = state.stripExif ? "无法确认 EXIF 已清除，未导出图片" : "无法写入 EXIF，未导出图片";
-          throw new Error(message, { cause: err });
+          throw new Error(err?.message ? `${message}：${err.message}` : message, { cause: err });
         }
 
         if (seq !== encodeSeq) return;

@@ -203,6 +203,35 @@ for (const engine of engines) {
       assert.equal(chunks.includes('EXIF'), false);
     }
   }));
+
+  test(`${engine}: EXIF text limits block stale downloads and allow recovery`, { timeout: 45000 }, () => open(engine, async (page) => {
+    const fixture = await imageFixture(page, 'metadata.png', 1, 1, ['red']);
+    await page.locator('#fileInput').setInputFiles(fixture);
+    await ready(page, 'PNG (无损)');
+    await on(page, 'exif');
+    const longText = '像'.repeat(10922); // 32766 bytes
+    const tooLong = '像'.repeat(10923);
+    await page.locator('#exifMake').fill(tooLong);
+    await page.waitForFunction(() => document.querySelector('#exportSpecSummary').textContent.includes('32767'));
+    assert.equal(await page.locator('#btnDownloadExport').isDisabled(), true);
+    assert.equal(await page.locator('#exifMake').inputValue(), tooLong);
+
+    await page.locator('#exifMake').fill(longText);
+    await ready(page, 'PNG (无损)');
+    assert.ok((await download(page)).bytes.includes(Buffer.from(longText)));
+    await page.locator('#exifArtist').fill('A'.repeat(32767));
+    await ready(page, 'PNG (无损)');
+    await on(page, 'export');
+    await format(page, 'jpeg');
+    await page.waitForFunction(() => document.querySelector('#exportSpecSummary').textContent.includes('64KB'));
+    assert.equal(await page.locator('#btnDownloadExport').isDisabled(), true);
+    await format(page, 'png');
+    await ready(page, 'PNG (无损)');
+    await on(page, 'exif');
+    await click(page, 'label:has(#chkStripExif)');
+    await ready(page, 'PNG (无损)');
+    assert.ok(!(await download(page)).bytes.includes(Buffer.from(longText)));
+  }));
 }
 
 if (engines.includes('chromium')) {

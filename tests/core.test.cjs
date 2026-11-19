@@ -203,6 +203,22 @@ test('TIFF text reads only a bounded, complete field', async () => {
   assert.equal(result.description, metadata.description);
 });
 
+test('EXIF text is preserved within its limit and never silently truncated', async () => {
+  const longText = '像'.repeat(10922); // 32766 UTF-8 bytes, safely below the TIFF read limit.
+  const asciiLimit = 'A'.repeat(32767);
+  for (const text of [longText, asciiLimit]) {
+    const tiff = exif.buildTiffBuffer({ artist: text });
+    assert.equal((await parse(png(pngChunk('eXIf', tiff)))).artist, text);
+    const encoded = exif.processJpegBytes(jpeg(), false, { artist: text }, { w: 1, h: 1 });
+    assert.equal((await parse(encoded)).artist, text);
+  }
+  assert.throws(() => exif.buildTiffBuffer({ artist: '像'.repeat(10923) }), /32767/);
+  assert.throws(() => exif.buildTiffBuffer({ artist: 'A'.repeat(32768) }), /32767/);
+  assert.throws(() => exif.buildTiffBuffer({ description: 'first\0second' }), /空字符/);
+  assert.throws(() => exif.processJpegBytes(jpeg(), false,
+    { make: asciiLimit, artist: asciiLimit }, { w: 1, h: 1 }), /64KB/);
+});
+
 test('DateTimeDigitized outranks modification time if DateTimeOriginal is absent', async () => {
   const tiff = Buffer.from(exif.buildTiffBuffer({ dateTime: '2021:03:04 05:06:07' }));
   const sub = ifdPointer(tiff, 8, 0x8769);
