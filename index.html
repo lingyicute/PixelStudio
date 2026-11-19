@@ -2953,8 +2953,9 @@
           return Number.isFinite(v) ? Math.max(-limit, Math.min(limit, v)) : NaN;
         },
 
-        // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object
-        buildTiffBuffer(meta, dims, forJpeg = false) {
+        // Build binary TIFF payload (starts at 'II' 0x002A ...) from metadata object.
+        // RGB is the default for uncompressed PNG; JPEG and lossy WebP use YCbCr.
+        buildTiffBuffer(meta, dims, forJpeg = false, rgb = !forJpeg) {
           const encoder = new TextEncoder();
           const MAX_TEXT_BYTES = 8000;
           const makeStr = (meta.make || "").trim();
@@ -3050,7 +3051,8 @@
           const exifIfd = [];
           if (hasExifSub) {
             addRaw(exifIfd, 0x9000, 7, 4, [0x30, 0x32, 0x33, 0x30]); // ExifVersion "0230" (mandatory)
-            addRaw(exifIfd, 0x9101, 7, 4, [1, 2, 3, 0]); // ComponentsConfiguration: Y Cb Cr (mandatory)
+            // ComponentsConfiguration is mandatory: RGB uses 4/5/6, YCbCr uses 1/2/3.
+            addRaw(exifIfd, 0x9101, 7, 4, rgb ? [4, 5, 6, 0] : [1, 2, 3, 0]);
             addRaw(exifIfd, 0xa000, 7, 4, [0x30, 0x31, 0x30, 0x30]); // FlashpixVersion "0100" (mandatory)
             addShort(exifIfd, 0xa001, 1); // ColorSpace: sRGB (mandatory)
             if (hasDims) {
@@ -3389,7 +3391,9 @@
             if (xmpIndex >= 0) header[0] |= 0x04;
             else header[0] &= ~0x04;
             body.splice(xmpIndex >= 0 ? xmpIndex : body.length, 0, {
-              fourcc: "EXIF", payload: this.buildTiffBuffer(meta, { w: canvasW, h: canvasH })
+              fourcc: "EXIF",
+              payload: this.buildTiffBuffer(meta, { w: canvasW, h: canvasH }, false,
+                chunks.some(({ fourcc }) => fourcc === "VP8L"))
             });
             ordered = [{ fourcc: "VP8X", payload: header }, ...body];
           }

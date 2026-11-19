@@ -208,6 +208,27 @@ test('EXIF sensitivity and fixed-point fields round trip at their declared limit
   assert.equal(exif.parsePositiveFixed('42949672.96'), 0);
 });
 
+test('EXIF component order matches RGB and YCbCr image encodings', () => {
+  const components = (bytes) => {
+    const tiff = Buffer.from(bytes);
+    const sub = ifdPointer(tiff, 8, 0x8769);
+    const entry = ifdEntry(tiff, sub, 0x9101);
+    assert.equal(tiff.readUInt16LE(entry + 2), 7);
+    assert.equal(tiff.readUInt32LE(entry + 4), 4);
+    return [...tiff.subarray(entry + 8, entry + 12)];
+  };
+  assert.deepEqual(components(exif.buildTiffBuffer({}, { w: 1, h: 1 })), [4, 5, 6, 0]);
+  assert.deepEqual(components(exif.buildTiffBuffer({}, { w: 1, h: 1 }, true)), [1, 2, 3, 0]);
+
+  for (const [fourcc, expected] of [['VP8L', [4, 5, 6, 0]], ['VP8 ', [1, 2, 3, 0]]]) {
+    const image = webp(riffChunk(fourcc, Buffer.from([0x2f, 0, 0, 0, 0])));
+    const encoded = exif.injectWebpExif(image, false, {}, 1, 1);
+    const chunks = exif._webpChunks(new DataView(arrayBuffer(encoded))).chunks;
+    const payload = chunks.find((chunk) => chunk.fourcc === 'EXIF').payload;
+    assert.deepEqual(components(Buffer.from(payload)), expected);
+  }
+});
+
 test('Rounded resize dimensions obey both browser limits', () => {
   for (const [w, h, sx, sy] of [[8000, 8000, 3, 3], [1600, 1066, 10, 10], [1, 16383, 0.0001, 100],
     [8000, 8000, 8, 0.5], [16383, 3906, 5, 5], [2, 2, 0.01, 0.01]]) {
