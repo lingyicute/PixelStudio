@@ -3746,6 +3746,14 @@
         return w && h ? w / h : null;
       }
 
+      // Integer crops can differ from the ideal ratio by rounding one axis. A fixed relative
+      // tolerance is wrong for large images: it used to accept visibly non-matching manual sizes.
+      function cropRatioMatches(w, h, ratio) {
+        if (!(w > 0 && h > 0 && ratio > 0) || !Number.isFinite(w + h + ratio)) return false;
+        return Math.abs(w - Math.round(h * ratio)) <= 1 ||
+          Math.abs(h - Math.round(w / ratio)) <= 1;
+      }
+
       /* ======================================================================
          MODULE 5: IMAGE LOADING & DEMO IMAGE GENERATOR
          ====================================================================== */
@@ -5587,7 +5595,7 @@
             cropInputSnapshot = null;
             // A typed size that no longer matches the locked ratio would make the next drag jump
             const lockedRatio = parseRatioValue(state.cropRatio);
-            if (lockedRatio && Math.abs(w / h - lockedRatio) / lockedRatio > 0.02) {
+            if (lockedRatio && !cropRatioMatches(w, h, lockedRatio)) {
               state.cropRatio = "free";
               setRatioChipActive("free");
             }
@@ -5632,7 +5640,7 @@
           state.cropH = state.rotH;
           // The full frame rarely matches a fixed preset: drop the lock so the next drag cannot jump
           const lockedRatio = parseRatioValue(state.cropRatio);
-          if (lockedRatio && Math.abs(state.rotW / state.rotH - lockedRatio) / lockedRatio > 0.02) {
+          if (lockedRatio && !cropRatioMatches(state.rotW, state.rotH, lockedRatio)) {
             state.cropRatio = "free";
             setRatioChipActive("free");
           }

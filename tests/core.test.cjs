@@ -12,8 +12,8 @@ const source = Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g), ([, sc
   .find((script) => script.includes(init));
 assert.ok(source, 'The application script must contain the initialization hook');
 const el = { addEventListener() {}, setAttribute() {} };
-const { ExifEngine: exif, CodecHelper: codecs, fitResizeScales, makeDownloadFilename } = runInNewContext(
-  source.replace(init, 'return { ExifEngine, CodecHelper, fitResizeScales, makeDownloadFilename };'),
+const { ExifEngine: exif, CodecHelper: codecs, fitResizeScales, cropRatioMatches, makeDownloadFilename } = runInNewContext(
+  source.replace(init, 'return { ExifEngine, CodecHelper, fitResizeScales, cropRatioMatches, makeDownloadFilename };'),
   { document: { getElementById: () => el }, window: el, navigator: {}, TextDecoder, TextEncoder, Blob, DecompressionStream }
 );
 const arrayBuffer = (bytes) => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -241,6 +241,16 @@ test('Rounded resize dimensions obey both browser limits', () => {
   assert.equal(native.limit, 1);
   assert.equal(native.w * native.h, 64000000);
   assert.equal(fitResizeScales(1, 400, 0.5, 0.5).h, 200);
+});
+
+test('Crop ratios allow integer rounding, not a two-percent manual mismatch', () => {
+  assert.equal(cropRatioMatches(1600, 900, 16 / 9), true);
+  assert.equal(cropRatioMatches(1600, 1066, 3 / 2), true); // One-pixel rounding is unavoidable here.
+  assert.equal(cropRatioMatches(101, 100, 1), true);
+  assert.equal(cropRatioMatches(1600, 910, 16 / 9), false);
+  assert.equal(cropRatioMatches(102, 100, 1), false);
+  assert.equal(cropRatioMatches(0, 100, 1), false);
+  assert.equal(cropRatioMatches(100, 100, Infinity), false);
 });
 
 test('BMP is padded bottom-up BGR and composites transparent pixels', async () => {
