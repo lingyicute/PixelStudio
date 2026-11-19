@@ -253,6 +253,20 @@ test('EXIF sensitivity and fixed-point fields round trip at their declared limit
   assert.equal(exif.parsePositiveFixed('42949672.96'), 0);
 });
 
+test('EXIF fixed-point values round decimal halves consistently', async () => {
+  for (const [raw, expected] of [
+    ['1.005', '1.01'], ['1.015', '1.02'], ['0.145', '0.15'], ['0.285', '0.29'],
+    ['1.005e0', '1.01'], ['1.0049999999999999', '1'], ['42949672.95', '42949672.95']
+  ]) {
+    assert.equal(String(exif.parsePositiveFixed(raw)), expected);
+    const tiff = exif.buildTiffBuffer({ fNumber: raw, focalLength: raw });
+    const result = await parse(png(pngChunk('eXIf', tiff)));
+    assert.equal(result.fNumber, expected);
+    assert.equal(result.focalLength, expected);
+  }
+  assert.equal(exif.parsePositiveFixed('42949672.955'), 0);
+});
+
 test('EXIF component order matches RGB and YCbCr image encodings', () => {
   const components = (bytes) => {
     const tiff = Buffer.from(bytes);

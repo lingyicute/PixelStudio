@@ -204,6 +204,18 @@ for (const engine of engines) {
     }
   }));
 
+  test(`${engine}: EXIF fixed-point fields round decimal halves`, { timeout: 30000 }, () => open(engine, async (page) => {
+    const fixture = await imageFixture(page, 'rounding.png', 1, 1, ['red']);
+    await page.locator('#fileInput').setInputFiles(fixture);
+    await ready(page, 'PNG (无损)');
+    await on(page, 'exif');
+    await type(page, '#exifFNumber', '1.005');
+    assert.equal(await page.locator('#exifFNumber').inputValue(), '1.01');
+    await type(page, '#exifFocal', '0.145');
+    assert.equal(await page.locator('#exifFocal').inputValue(), '0.15');
+    await ready(page, 'PNG (无损)');
+  }));
+
   test(`${engine}: EXIF text limits block stale downloads and allow recovery`, { timeout: 45000 }, () => open(engine, async (page) => {
     const fixture = await imageFixture(page, 'metadata.png', 1, 1, ['red']);
     await page.locator('#fileInput').setInputFiles(fixture);

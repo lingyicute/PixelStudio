@@ -2975,7 +2975,11 @@
           if (!s) return 0;
           const v = Number(s);
           if (!Number.isFinite(v)) return 0;
-          const hundredths = Math.round(v * 100);
+          // Shift the decimal exponent before conversion: binary multiplication can turn
+          // an exact decimal half such as 1.005 into 100.49999999999999.
+          const decimal = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(?:e([+-]?\d+))?$/i);
+          if (!decimal) return 0;
+          const hundredths = Math.round(Number(`${decimal[1]}e${Number(decimal[2] || 0) + 2}`));
           return hundredths >= 1 && hundredths <= 0xffffffff ? hundredths / 100 : 0;
         },
 
